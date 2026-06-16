@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>礼物 - king small two</title>
+    <iframe src="bgm.html" style="display:none;"></iframe>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(180deg, #2d1b4e 0%, #4a2c6e 50%, #1a0a2e 100%);
+            min-height: 100vh;
+            color: #f0e6ff;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 25px 20px;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 25px;
+            color: #d4c0f0;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.22);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .page-title {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: #b8a0d0;
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .gift-box {
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            padding: 40px 28px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            cursor: pointer;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gift-box:hover {
+            background: rgba(255,255,255,0.12);
+            box-shadow: 0 20px 50px rgba(180, 130, 255, 0.3);
+            border-color: rgba(200, 160, 255, 0.5);
+        }
+
+        .gift-icon {
+            font-size: 90px;
+            animation: shake 0.6s ease-in-out infinite;
+            display: inline-block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(0); }
+            25% { transform: rotate(-8deg); }
+            75% { transform: rotate(8deg); }
+        }
+
+        .gift-box h3 {
+            font-size: 22px;
+            margin: 15px 0 8px;
+            color: #ffd700;
+        }
+
+        .gift-box .hint {
+            font-size: 14px;
+            color: #c0a8e0;
+        }
+
+        .gift-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 25px;
+        }
+
+        .gift-item {
+            background: rgba(255,255,255,0.07);
+            border-radius: 18px;
+            padding: 22px 14px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        .gift-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-4px);
+        }
+
+        .gift-item .icon {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .gift-item .name {
+            font-size: 13px;
+            color: #d4c0f0;
+        }
+
+        /* 左下角音乐按钮 */
+        .music-fab {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.35s ease;
+            color: #d4c0f0;
+            text-decoration: none;
+        }
+
+        .music-fab:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.35);
+            transform: scale(1.1);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <a href="home.html" class="back-btn">⬅ 返回主界面</a>
+        <div class="page-title">🎁 生日礼物</div>
+        <div class="page-subtitle">点击大礼盒，有惊喜哦~</div>
+
+        <div class="gift-box" onclick="openGift()">
+            <span class="gift-icon">🎁</span>
+            <h3>神秘大礼盒</h3>
+            <p class="hint">👆 点我打开</p>
+        </div>
+
+        <div class="gift-list">
+            <div class="gift-item">
+                <span class="icon">💐</span>
+                <span class="name">鲜花</span>
+            </div>
+            <div class="gift-item">
+                <span class="icon">💎</span>
+                <span class="name">钻石</span>
+            </div>
+            <div class="gift-item">
+                <span class="icon">🎵</span>
+                <span class="name">音乐盒</span>
+            </div>
+            <div class="gift-item">
+                <span class="icon">📱</span>
+                <span class="name">新手机</span>
+            </div>
+            <div class="gift-item">
+                <span class="icon">✈️</span>
+                <span class="name">旅行</span>
+            </div>
+            <div class="gift-item">
+                <span class="icon">💖</span>
+                <span class="name">真心</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 左下角音乐按钮 -->
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script>
+        function openGift() {
+            const messages = [
+                '🎉 恭喜！你获得了一份超级大礼！\n\n「永远的幸福快乐」',
+                '🌟 哇！礼盒里装满了祝福！\n\n愿你每一天都闪闪发光！',
+                '💝 惊喜！这份礼物叫做「美好未来」\n\n请查收~',
+            ];
+            const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+            alert(randomMsg + '\n\n—— 王小二，生日快乐！🎂');
+        }
+    </script>
+
+</body>
+</html>
