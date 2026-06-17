@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>king small two</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 60px 80px;
+            overflow: hidden;
+        }
+
+        .video-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 0;
+        }
+
+        .hero-text {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            color: #ffb3c1;
+            padding-right: 60px;
+            text-align: left;
+        }
+
+        .hero-text h1 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            line-height: 1.3;
+        }
+
+        .hero-text .ovo {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: 6px;
+            color: #ffb3c1;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            margin-top: 8px;
+        }
+
+        .hero-text .line {
+            width: 120px;
+            height: 3px;
+            background: #ffb3c1;
+            margin-top: 28px;
+            border-radius: 2px;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 20px;
+            padding: 45px 38px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 20px 55px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffb3c1;
+            margin-bottom: 28px;
+            letter-spacing: 1px;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'SimHei', 'Heiti SC', sans-serif;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #777;
+            margin-bottom: 7px;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 1.5px solid #eee;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .input-group input:focus {
+            border-color: #ffb3c1;
+            box-shadow: 0 0 0 3px rgba(255, 179, 193, 0.08);
+            background: #fff;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: #ffb3c1;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            margin-top: 8px;
+        }
+
+        .login-btn:hover {
+            background: #ff9ab0;
+        }
+
+        .login-btn:active {
+            transform: scale(0.97);
+        }
+
+        .error-msg {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 10px;
+            min-height: 18px;
+        }
+
+        .music-fab {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.35s ease;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .music-fab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 700px) {
+            body {
+                justify-content: center;
+                padding: 30px 20px;
+            }
+            .hero-text {
+                display: none;
+            }
+            .login-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <video class="video-bg" autoplay muted loop playsinline>
+        <source src="1.mp4" type="video/mp4">
+        您的浏览器不支持视频播放
+    </video>
+
+    <div class="overlay"></div>
+
+    <div class="hero-text">
+        <h1>欢迎王佳宁女士驾到</h1>
+        <div class="ovo">OVO</div>
+        <div class="line"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="title">登录</div>
+
+        <div class="input-group">
+            <label>账号</label>
+            <input type="text" id="username" placeholder="请输入账号" autocomplete="off">
+        </div>
+
+        <div class="input-group">
+            <label>密码</label>
+            <input type="password" id="password" placeholder="请输入密码">
+        </div>
+
+        <button class="login-btn" onclick="login()">登 录</button>
+        <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script>
+        const CORRECT_USERNAME = '王小二';
+        const CORRECT_PASSWORD = '0713';
+
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+
+            if (!username || !password) {
+                errorMsg.textContent = '请输入账号和密码';
+                return;
+            }
+
+            if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
+                errorMsg.textContent = '';
+                window.location.href = 'home.html';
+            } else {
+                errorMsg.textContent = '账号或密码错误，请重试';
+                document.getElementById('password').value = '';
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+
+</body>
+</html>
