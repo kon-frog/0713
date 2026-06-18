@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🌾 星露谷农场</title>
+<style>
+:root{--bg:#1e1810;--p:#2a2218;--g:#d4a860;--t:#e8dcc8;--gr:#7ab858;--r:#c85040;--pk:#f0a0b0}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t);font-family:'PingFang SC','Microsoft YaHei',sans-serif;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#app{width:700px;max-width:98vw;height:94vh;display:flex;flex-direction:column;border:2px solid #3a3020;border-radius:12px;overflow:hidden;background:var(--p)}
+#top{background:#1a1410;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a3020;flex-shrink:0;font-size:13px}
+#top .g{color:var(--g);font-weight:700}#top .s{color:var(--gr)}#top .s.low{color:var(--r)}
+#scene{flex:1;overflow-y:auto;padding:18px 22px;line-height:2;font-size:14px}
+#scene h2{text-align:center;color:var(--g);margin-bottom:12px;letter-spacing:3px}
+#scene .sub{text-align:center;color:#988;margin-bottom:16px;font-size:12px}
+#scene .card{background:#1e1810;border-radius:10px;padding:10px 16px;margin:6px 0;border-left:3px solid var(--g);color:#c8b898;font-size:13px}
+#scene .card.good{border-left-color:var(--gr)}#scene .card.bad{border-left-color:var(--r)}#scene .card.pk{border-left-color:var(--pk)}
+#bottom{background:#1a1410;padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid #3a3020;flex-shrink:0}
+#bottom button{padding:8px 16px;border:1px solid #4a3a2a;border-radius:8px;background:#2a2218;color:var(--t);cursor:pointer;font-size:12px;letter-spacing:1px;font-family:inherit;transition:all .2s;white-space:nowrap}
+#bottom button:hover{background:#3a3020;border-color:#6a5a40}
+#bottom button.on{background:#3a2818;border-color:var(--g);color:var(--g)}
+#bottom button.pk{background:#301a20;border-color:var(--pk);color:var(--pk)}
+#bottom button:disabled{opacity:.3}
+#log{max-height:90px;overflow-y:auto;padding:6px 14px;font-size:11px;color:#888;border-top:1px solid #2a2018;flex-shrink:0}
+#log div{padding:2px 0}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="top"><span>🌾<b>星露谷农场</b></span><span>📅<span id="dd"></span>⏰<span id="td"></span><span class="g">🪙<span id="gd"></span>G</span><span class="s" id="sd"></span></span></div>
+<div id="scene"></div><div id="bottom"></div><div id="log"></div>
+</div>
+<a href="home.html" style="position:fixed;top:10px;right:16px;z-index:50;color:#888;text-decoration:none;font-size:11px;letter-spacing:2px;background:rgba(0,0,0,.5);padding:4px 12px;border-radius:12px">←返回</a>
+<iframe src="bgm.html" style="display:none;"></iframe>
+<script>
+// ═══════════ 状态 ═══════════
+var S={gold:800,day:1,season:0,hour:7,min:0,sta:50,maxSta:50,plots:[],fish:[],seeds:{},harv:{},cooked:{},liz:0,lizMet:false,married:false};
+var SEAS=['春','夏','秋','冬'],SL=7;
+var CROP={白菜:[2,[2,2],8,30,[0]],春萝卜:[3,[1,1,1],12,45,[0]],土豆:[2,[2,3],10,38,[0]],草莓:[3,[1,2,1],20,70,[0]],青椒:[2,[1,2],10,35,[0]],豌豆:[3,[1,1,2],15,50,[0]],春笋:[3,[1,1,1],14,42,[0]],春韭:[2,[2,1],9,33,[0]],香椿:[3,[1,2,1],16,48,[0]],荠菜:[2,[2,2],8,32,[0]],玉米:[3,[2,1,2],18,55,[1]],番茄:[3,[1,2,1],22,65,[1]],西瓜:[3,[2,2,2],30,90,[1]],蓝莓:[3,[1,1,1],25,75,[1]],葵花:[3,[2,2,1],15,55,[1]],辣椒:[2,[1,2],12,38,[1]],黄瓜:[3,[1,1,1],14,42,[1]],豆角:[3,[1,2,1],16,48,[1]],紫茄:[3,[2,1,1],18,52,[1]],苦瓜:[2,[2,2],13,40,[1]],南瓜:[3,[2,2,2],28,85,[2]],秋麦:[3,[1,1,1],10,38,[2]],秋茄:[3,[1,2,1],16,50,[2]],秋葵:[3,[1,1,2],15,48,[2]],葡萄:[3,[2,1,1],22,60,[2]],甜菜:[2,[2,3],14,42,[2]],红薯:[3,[2,2,1],15,50,[2]],山药:[3,[1,2,2],18,55,[2]],板栗:[3,[2,2,2],22,68,[2]],秋梨:[2,[2,3],16,48,[2]],冬笋:[2,[2,2],10,38,[3]],雪莲:[3,[1,2,2],20,65,[3]],冬萝卜:[3,[1,1,1],12,45,[3]],冬土豆:[2,[2,3],10,38,[3]],冬麦:[3,[1,1,1],10,38,[3]],冬茄:[3,[1,2,1],16,50,[3]],冬菇:[2,[2,2],14,44,[3]],冬芹:[3,[1,1,2],13,40,[3]],冬枣:[3,[2,2,1],18,55,[3]],冬姜:[2,[2,1],12,38,[3]]};
+var FISH={春季:['鲤鱼','鲫鱼','草鱼','鲈鱼','鳟鱼'],夏季:['鲤鱼','鲶鱼','罗非鱼','鳊鱼','黑鱼'],秋季:['鲤鱼','草鱼','鲑鱼','鳗鱼','鲳鱼'],冬季:['鲤鱼','鳕鱼','梭鱼','鲟鱼','鮰鱼']};
+var FP={鲤鱼:25,鲫鱼:30,草鱼:35,鲈鱼:55,鳟鱼:65,鲶鱼:45,罗非鱼:40,鳊鱼:48,鲑鱼:75,鳗鱼:90,鳕鱼:60,梭鱼:70,鲟鱼:100,黑鱼:50,鲳鱼:62,鮰鱼:55};
+var REC={};
+(function(){var cn=Object.keys(CROP);for(var i=0;i<cn.length;i++){var n=cn[i],ba=Math.floor(CROP[n][3]/5)+3;REC['炒'+n]={nd:{},af:ba};REC['炒'+n].nd[n]=2;REC[n+'汤']={nd:{},af:ba+1};REC[n+'汤'].nd[n]=2}for(var i=0;i<cn.length;i++){for(var j=i+1;j<cn.length;j++){if(Object.keys(REC).length>=80)break;var n1=cn[i],n2=cn[j];var af=Math.floor((CROP[n1][3]+CROP[n2][3])/8)+5;var rn=n1+'炒'+n2;REC[rn]={nd:{},af:af};REC[rn].nd[n1]=1;REC[rn].nd[n2]=1}}REC['橘酱']={nd:{橘子:1},af:25};REC['烤鱼']={nd:{鱼:1},af:8}})();
+
+// 初始化
+(function(){var cn=Object.keys(CROP);for(var i=0;i<cn.length;i++){S.seeds[cn[i]]=0;S.harv[cn[i]]=0}S.harv['橘子']=0;for(var i=0;i<4;i++)S.plots.push({c:null,s:0,w:false});S.orange={d:0,w:false,r:false}})();
+
+// ═══════════ DOM ═══════════
+var le=document.getElementById('log'),se=document.getElementById('scene'),be=document.getElementById('bottom'),so=false,sm='',st=0;
+function upd(){document.getElementById('gd').textContent=S.gold;document.getElementById('dd').textContent=SEAS[S.season]+'第'+S.day+'天';document.getElementById('td').textContent=('0'+S.hour).slice(-2)+':'+('0'+S.min).slice(-2);document.getElementById('sd').textContent='⚡'+S.sta;document.getElementById('sd').className=S.sta<15?'s low':'s'}
+upd();
+function log(m,c){var d=document.createElement('div');d.textContent='▸ '+m;d.style.color=c||'#c0b090';le.prepend(d);if(le.children.length>30)le.lastChild.remove()}
+function addT(m,cost){if(cost){S.sta-=cost;if(S.sta<0)S.sta=0}S.min+=m;while(S.min>=60){S.min-=60;S.hour++}if(S.hour>=26){S.hour=7;S.day++;if(S.day>SL){S.day=1;S.season=(S.season+1)%4}for(var i=0;i<S.plots.length;i++){var p=S.plots[i];if(p.c&&p.w){p.s++;if(p.s>=CROP[p.c][0])log('田'+(i+1)+'的'+p.c+'成熟了！','#7ab858')}p.w=false}if(S.orange.w){S.orange.d++;if(S.orange.d>=7&&!S.orange.r){S.orange.r=true;log('🍊橘子树结果了！','#d4a860')}}S.orange.w=false;if(S.lizMet&&Math.random()<0.35){var w=0;for(var i=0;i<S.plots.length;i++){if(S.plots[i].c&&!S.plots[i].w){S.plots[i].w=true;w++}}if(!S.orange.w){S.orange.w=true;w++}if(w>0)log('💖liz帮你浇了'+w+'块地','#f0a0b0')}S.sta=S.maxSta;log('💤新的一天—'+SEAS[S.season]+'第'+S.day+'天','#c0b090')}upd();if(S.gold>=1000&&!S.lizMet)lizMeet()}
+function scene(t,s,ms){var h='<h2>'+t+'</h2>';if(s)h+='<div class="sub">'+s+'</div>';if(ms)for(var i=0;i<ms.length;i++)h+='<div class="card '+(ms[i].c||'')+'">'+ms[i].t+'</div>';se.innerHTML=h}
+function btns(arr){be.innerHTML='';for(var i=0;i<arr.length;i++){var b=document.createElement('button');b.textContent=arr[i].t;b.className=arr[i].c||'';if(arr[i].d)b.disabled=true;(function(fn){b.onclick=fn})(arr[i].fn);be.appendChild(b)}}
+
+// ═══════════ 场景 ═══════════
+function showFarm(){var ms=[];for(var i=0;i<S.plots.length;i++){var p=S.plots[i],t='田'+(i+1)+':';if(!p.c)t+='空地';else t+=p.c+' '+p.s+'/'+CROP[p.c][0]+(p.s>=CROP[p.c][0]?'✅':'');t+=p.w?'💧':'';ms.push({t:t})}ms.push({t:'🍊橘子树:'+(S.orange.r?'✅可收!':S.orange.d+'/7天')+(S.orange.w?'💧':''),c:'good'});ms.push({t:'🪙'+S.gold+'G|⚡'+S.sta+'|已垦'+S.plots.length+'块|❤️'+S.liz});scene('🌾农场','第'+S.day+'天 '+('0'+S.hour).slice(-2)+':'+('0'+S.min).slice(-2),ms);var bb=[{t:'🌱种子店',fn:shop},{t:'⛏农活',fn:farmAct},{t:'🎣钓鱼(20体)',fn:fish},{t:'💤睡觉',fn:sleep,c:S.hour>=24?'on':''}];var cc=S.plots.length*30+30;if(S.plots.length<10)bb.push({t:'🪓开垦('+cc+'G+15体)',fn:reclaim,d:S.gold<cc||S.sta<15});bb.push({t:'📦背包',fn:inv});bb.push({t:'🍳厨房',fn:kitchen});if(S.lizMet)bb.push({t:'💖Liz(❤️'+S.liz+')',fn:showLiz,c:'pk'});if(S.fish.length>0){var fv=0;for(var i=0;i<S.fish.length;i++)fv+=FP[S.fish[i]]||8;bb.push({t:'🐟卖鱼('+S.fish.length+'条='+fv+'G)',fn:sellFish,c:'on'})}bb.push({t:'💾存档',fn:save,c:'on'});btns(bb)}
+function shop(){var ms=[{t:'🪙'+S.gold+'G'}];scene('🌻种子店','',ms);var bb=[],cn=Object.keys(CROP);for(var i=0;i<cn.length;i++){var n=cn[i],c=CROP[n],can=c[4].indexOf(S.season)>=0,aff=S.gold>=c[2];(function(n,c,can,aff){bb.push({t:'🌱'+n+' '+c[2]+'G'+(can?'':'(季错)'),fn:function(){if(!can||!aff)return;S.gold-=c[2];S.seeds[n]++;log('买入'+n+'种子','#d4a860');upd();shop()},d:!can||!aff})})(n,c,can,aff)}bb.push({t:'📦卖果实',fn:sell,c:'on'});bb.push({t:'←返回',fn:showFarm});btns(bb)}
+function sell(){var ms=[{t:'🪙'+S.gold+'G'}];scene('📦出售','',ms);var bb=[],all={};for(var n in S.harv)all[n]=S.harv[n];if(S.orange.r)all['橘子']=(all['橘子']||0)+1;var cn=Object.keys(all);for(var i=0;i<cn.length;i++){var n=cn[i],cnt=all[n],price=n==='橘子'?80:(CROP[n]?CROP[n][3]:10);(function(n,cnt,price){bb.push({t:'💰'+n+'×'+cnt+'→'+(cnt*price)+'G',fn:function(){if(cnt<1)return;showConfirm(n,cnt,price,function(){if(n==='橘子'){S.orange.r=false;S.orange.d=0}else S.harv[n]-=cnt;S.gold+=price*cnt;log('卖出'+n+'×'+cnt+' +'+price*cnt+'G','#d4a860');upd();sell()})},d:cnt<1})})(n,cnt,price)}bb.push({t:'←返回',fn:shop});btns(bb)}
+function showConfirm(n,cnt,price,cb){scene('⚠️确认','',[{t:'出售'+n+'×'+cnt+'='+(price*cnt)+'G'}]);btns([{t:'✅确认',fn:cb,c:'on'},{t:'❌取消',fn:n==='鱼'?shop:sell}])}
+function farmAct(){var anyH=false,anyW=false;for(var i=0;i<S.plots.length;i++){var p=S.plots[i];if(p.c&&p.s>=CROP[p.c][0])anyH=true;else if(p.c&&!p.w)anyW=true}if(S.orange.r)anyH=true;if(!S.orange.w)anyW=true;var ms=[];for(var i=0;i<S.plots.length;i++){var p=S.plots[i];ms.push({t:'田'+(i+1)+':'+(p.c?p.c+p.s+'/'+CROP[p.c][0]+(p.s>=CROP[p.c][0]?'🌽':''):'空')+(p.w?'💧':'')})}ms.push({t:'🍊橘子树:'+(S.orange.r?'✅':S.orange.d+'/7天')+(S.orange.w?'💧':'')});scene('⛏农活','',ms);var bb=[];if(anyH)bb.push({t:'🌽全部收获',fn:hvAll,c:'on'});if(anyW)bb.push({t:'💧全部浇水',fn:wtAll});for(var i=0;i<S.plots.length;i++){var p=S.plots[i];(function(idx,p){if(!p.c)bb.push({t:'🟫田'+(idx+1)+'→播种',fn:function(){showPlant(idx)}});else if(p.s>=CROP[p.c][0])bb.push({t:'🌽田'+(idx+1)+'→收'+p.c,fn:function(){S.harv[p.c]++;p.c=null;p.s=0;p.w=false;log('收获'+p.c,'#7ab858');addT(10,3);showFarm()},c:'on'});else if(!p.w)bb.push({t:'💧田'+(idx+1)+'→浇水',fn:function(){p.w=true;log('浇水','#7ab858');addT(8,2);showFarm()}})})(i,p)}if(S.orange.r)bb.push({t:'🍊摘橘子',fn:function(){S.orange.r=false;S.orange.d=0;S.harv['橘子']=(S.harv['橘子']||0)+1;log('🍊收获橘子！','#d4a860');addT(10,3);showFarm()},c:'on'});if(!S.orange.w)bb.push({t:'💧浇橘子树',fn:function(){S.orange.w=true;log('橘子树浇水','#7ab858');addT(5,2);showFarm()}});bb.push({t:'←返回',fn:showFarm});btns(bb)}
+function showPlant(idx){var p=S.plots[idx];scene('⛏播种田'+(idx+1),'',[{t:'选种子'}]);var bb=[],cn=Object.keys(S.seeds);for(var i=0;i<cn.length;i++){var n=cn[i];if(S.seeds[n]<=0)continue;var c=CROP[n],can=c[4].indexOf(S.season)>=0;(function(n,c,can){bb.push({t:'🌱'+n+'('+c[0]+'阶)',fn:function(){if(!can)return;S.seeds[n]--;p.c=n;p.s=0;p.w=false;log('种下'+n,'#7ab858');addT(12,4);showFarm()},d:!can})})(n,c,can)}bb.push({t:'←返回',fn:farmAct});btns(bb)}
+function hvAll(){var h=0;for(var i=0;i<S.plots.length;i++){var p=S.plots[i];if(p.c&&p.s>=CROP[p.c][0]){S.harv[p.c]++;p.c=null;p.s=0;p.w=false;h++}}if(S.orange.r){S.orange.r=false;S.orange.d=0;S.harv['橘子']=(S.harv['橘子']||0)+1;h++}if(h>0){log('收获'+h+'处','#7ab858');addT(30,5)}showFarm()}
+function wtAll(){var w=0;for(var i=0;i<S.plots.length;i++){if(S.plots[i].c&&!S.plots[i].w){S.plots[i].w=true;w++}}if(!S.orange.w){S.orange.w=true;w++}log('浇了'+w+'处','#7ab858');addT(20,5);showFarm()}
+function reclaim(){var cost=S.plots.length*30+30;if(S.gold<cost||S.sta<15)return;S.gold-=cost;S.sta-=15;S.plots.push({c:null,s:0,w:false});log('开垦新田！共'+S.plots.length+'块','#d4a860');upd();showFarm()}
+function sleep(){scene('🏠睡觉','',[{t:'💤睡觉恢复体力',c:'good'},{t:'浇水作物会成长',c:''}]);btns([{t:'💤睡觉',fn:function(){addT((25-S.hour)*60+60-S.min);showFarm()},c:'on'},{t:'←返回',fn:showFarm}])}
+function fish(){if(S.sta<20){log('体力不足(需20)!','#c85040');showFarm();return}if(S.hour>=25){sleep();return}var pool=FISH[SEAS[S.season]],f=pool[Math.floor(Math.random()*pool.length)],luck=Math.random(),price=FP[f]||30;addT(50,20);if(luck<0.1){scene('🎣钓鱼','',[{t:'鱼跑了...',c:'bad'}]);btns([{t:'继续',fn:showFarm}]);return}if(luck<0.3){scene('🎣钓鱼','',[{t:'水草...',c:'bad'}]);btns([{t:'继续',fn:showFarm}]);return}var bonus='';if(luck>0.85){price=Math.floor(price*1.5);bonus='⭐优良!'}S.fish.push(f);S.gold+=price;scene('🎣恭喜！','',[{t:'钓到了「'+f+'」！'+bonus,c:'good'},{t:'💰'+price+'G',c:'good'}]);btns([{t:'👍',fn:showFarm,c:'on'}]);upd()}
+function inv(){var ms=[{t:'🪙'+S.gold+'G|⚡'+S.sta}];var s='';for(var n in S.seeds)if(S.seeds[n]>0)s+=n+':'+S.seeds[n]+' ';ms.push({t:'🌱种子:'+(s||'无')});var h='';for(var n in S.harv)if(S.harv[n]>0)h+=n+':'+S.harv[n]+' ';ms.push({t:'🌽果实:'+(h||'无')});var ck='';for(var n in S.cooked)if(S.cooked[n]>0)ck+=n+':'+S.cooked[n]+' ';ms.push({t:'🍳料理:'+(ck||'无')});ms.push({t:'🐟鱼:'+S.fish.length+'条|已垦:'+S.plots.length+'/10|❤️'+S.liz});scene('📦背包','',ms);btns([{t:'←返回',fn:showFarm}])}
+function kitchen(){var ms=[];for(var n in S.harv)if(S.harv[n]>0)ms.push({t:'🌽'+n+'×'+S.harv[n]});for(var n in S.cooked)if(S.cooked[n]>0)ms.push({t:'🍳'+n+'×'+S.cooked[n],c:'good'});scene('🍳厨房','',ms.length?ms:[{t:'还没有食材'}]);var bb=[],rn=Object.keys(REC).sort().slice(0,40);for(var i=0;i<rn.length;i++){var rn2=rn[i],r=REC[rn2],can=true;for(var ing in r.nd){var have=(ing==='鱼')?S.fish.length:(S.harv[ing]||0);if(have<r.nd[ing])can=false}if(can){(function(rn2,r){bb.push({t:'🍳'+rn2+'(+'+r.af+'❤️)',fn:function(){for(var ing in r.nd){if(ing==='鱼'){for(var fi=0;fi<r.nd[ing];fi++)S.fish.shift()}else S.harv[ing]-=r.nd[ing]}S.cooked[rn2]=(S.cooked[rn2]||0)+1;log('做好'+rn2,'#d4a860');kitchen()},c:'on'})})(rn2,r)}}bb.push({t:'←返回',fn:showFarm});btns(bb)}
+// ═══════════ Liz ═══════════
+function lizMeet(){S.lizMet=true;scene('💖来信','',[{t:'「亲爱的王小二：我是Liz。谢谢你救了cheeze。如果你愿意……我想和你在一起。」',c:'pk'},{t:'——你的Liz💕',c:'pk'},{t:'✨Liz有概率清晨帮你浇水！',c:'good'}]);btns([{t:'💌收下',fn:showFarm,c:'pk'}])}
+function showLiz(){var aff=S.liz,tier=aff>=100?'married':aff>=80?'max':aff>=50?'high':aff>=20?'mid':'low';if(!S.lizMet)tier='meet';var dial={meet:['谢谢你救了cheeze……'],low:['今天过得怎么样？','听说__fish__很新鲜呢……'],mid:['你种地的样子很帅','好想吃__food__……'],high:['我想一直陪着你','我喜欢你……从救cheeze那天起','梦见我们结婚了……'],max:['王小二，你愿意娶我吗？'],married:['老公~今天想吃什么？','嫁给你是我最幸福的决定']};var msgs=dial[tier]||dial['low'];var msg=msgs[Math.floor(Math.random()*msgs.length)];msg=msg.replace('__fish__',S.lizPref?.fish||'鱼').replace('__food__',S.lizPref?.food||'料理');scene('💖Liz','❤️'+aff+'/100',[{t:msg,c:'pk'},{t:'❤️好感度:'+aff+'/100',c:''}]);var bb=[];bb.push({t:'🎁送礼',fn:gift,c:'pk'});if(aff>=100&&!S.married)bb.push({t:'💍求婚',fn:propose,c:'pk'});bb.push({t:'←返回',fn:showFarm});btns(bb)}
+function gift(){var ms=[];for(var n in S.cooked)if(S.cooked[n]>0)ms.push({t:'🍳'+n+'×'+S.cooked[n]});for(var n in S.harv)if(S.harv[n]>0)ms.push({t:'🌽'+n+'×'+S.harv[n]});if(S.fish.length>0)ms.push({t:'🐟鱼×'+S.fish.length});scene('🎁送礼','',ms.length?ms:[{t:'还没有礼物'}]);var bb=[];for(var n in S.cooked)if(S.cooked[n]>0){(function(n){var aff=REC[n]?REC[n].af:5;bb.push({t:'🎁'+n+'(+'+aff+'❤️)',fn:function(){S.cooked[n]--;S.liz=Math.min(100,S.liz+aff);log('送礼+'+aff+'❤️','#f0a0b0');showLiz()},c:'pk'})})(n)}for(var n in S.harv)if(S.harv[n]>0){(function(n){bb.push({t:'🎁'+n+'(+3❤️)',fn:function(){S.harv[n]--;S.liz=Math.min(100,S.liz+3);log('送礼+3❤️','#f0a0b0');showLiz()},c:'pk'})})(n)}for(var fi=0;fi<Math.min(3,S.fish.length);fi++){(function(f){bb.push({t:'🎁'+f+'(+5❤️)',fn:function(){var i=S.fish.indexOf(f);if(i>=0)S.fish.splice(i,1);S.liz=Math.min(100,S.liz+5);log('送礼+5❤️','#f0a0b0');showLiz()},c:'pk'})})(S.fish[fi])}bb.push({t:'←返回',fn:showLiz});btns(bb)}
+function propose(){scene('💍求婚','',[{t:'「Liz……你愿意嫁给我吗？」',c:'pk'}]);btns([{t:'💒Liz:「我愿意！」',fn:wedding,c:'pk'}])}
+function wedding(){S.married=true;S.liz=100;scene('💒婚礼','',[{t:'在星露谷的见证下，王小二与Liz交换了戒指。',c:'pk'},{t:'「从今天起，你的农场是我们的家。」',c:'pk'},{t:'——Liz♡王小二——',c:'pk'}]);btns([{t:'💖开始婚后生活',fn:showFarm,c:'pk'}])}
+// ═══════════ 存档 ═══════════
+function save(){localStorage.setItem('farm_x',JSON.stringify(S));log('💾已存档','#d4a860')}
+function load(){try{var d=JSON.parse(localStorage.getItem('farm_x'));if(d&&d.gold>=0){S=d;if(!S.orange)S.orange={d:0,w:false,r:false};if(!S.cooked)S.cooked={};if(!S.liz)S.liz=0;if(!S.married)S.married=false;if(!S.lizMet)S.lizMet=false;if(!S.seeds||Object.keys(S.seeds).length<30){S.seeds={};S.harv={};var cn2=Object.keys(CROP);for(var i=0;i<cn2.length;i++){S.seeds[cn2[i]]=S.seeds[cn2[i]]||0;S.harv[cn2[i]]=S.harv[cn2[i]]||0}S.harv['橘子']=S.harv['橘子']||0}if(!S.fish)S.fish=[];if(!S.plots||S.plots.length===0){S.plots=[];for(var i=0;i<4;i++)S.plots.push({c:null,s:0,w:false})}log('📂读档成功','#d4a860');return true}}catch(e){}return false}
+function sellFish(){var t=0;for(var i=0;i<S.fish.length;i++)t+=FP[S.fish[i]]||8;S.gold+=t;S.fish=[];log('卖出鱼+'+t+'G','#d4a860');upd();showFarm()}
+var loaded=load();
+if(!loaded)log('🌾欢迎！800金币·50体力·40作物','#d4a860');
+log('⏰1秒=10分钟|2点前睡觉','#888');
+upd();showFarm();
+setInterval(function(){if(!so)addT(10);upd()},1000);
+window.addEventListener('beforeunload',function(){save()});
+</script>
+</body>
+</html>

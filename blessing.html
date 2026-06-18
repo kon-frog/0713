@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>祝福 </title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        /* 页面过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fdf8f5; z-index: 99999;
+            animation: pageIn 0.5s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        .page-transition.out {
+            animation: pageOut 0.4s cubic-bezier(0.23,1,0.32,1) forwards;
+        }
+        @keyframes pageIn { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes pageOut { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+        .video-bg {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .countdown-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            color: #fff;
+        }
+        .countdown-overlay .countdown-title {
+            font-size: 22px; letter-spacing: 4px;
+            font-weight: 300;
+        }
+        .countdown-overlay .countdown-time {
+            font-size: 48px; font-weight: 700;
+            letter-spacing: 3px;
+            background: linear-gradient(180deg, #ffd700, #d4a860);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .countdown-overlay .countdown-sub {
+            font-size: 13px; letter-spacing: 2px;
+            color: #ccc;
+        }
+
+        .envelope-wrapper {
+            position: relative; z-index: 1;
+            width: 90%; max-width: 620px;
+            cursor: pointer;
+            perspective: 1200px;
+        }
+
+        .envelope {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1.15/1;
+            background: linear-gradient(145deg,
+                #faf3e8 0%,
+                #f5e6d3 25%,
+                #f0e0cc 50%,
+                #e8d5bc 75%,
+                #e0cdb5 100%);
+            border-radius: 8px;
+            box-shadow:
+                0 4px 16px rgba(0,0,0,0.06),
+                0 12px 40px rgba(0,0,0,0.1),
+                0 24px 64px rgba(0,0,0,0.06);
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.23,1,0.32,1);
+        }
+
+        .envelope.open { transform: rotateX(5deg); }
+
+        .envelope-flap {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 55%;
+            background: linear-gradient(180deg, #f2e0cc 0%, #e8d4b8 100%);
+            clip-path: polygon(0 0, 50% 70%, 100% 0);
+            z-index: 10;
+            transform-origin: top center;
+            transition: transform 0.7s cubic-bezier(0.23,1,0.32,1);
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .envelope.open .envelope-flap { transform: rotateX(180deg); }
+
+        .seal {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -30%);
+            width: 44px; height: 44px;
+            background: radial-gradient(circle at 40% 35%,
+                #e06060 0%,
+                #c94b4b 25%,
+                #a03030 65%,
+                #8b2020 100%);
+            border-radius: 50%; z-index: 15;
+            box-shadow:
+                0 3px 10px rgba(0,0,0,0.25),
+                0 1px 3px rgba(0,0,0,0.15),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+            transition: opacity 0.4s;
+        }
+        .seal::after {
+            content: '💮'; position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%,-50%);
+            font-size: 16px;
+        }
+        .envelope.open .seal { opacity: 0; }
+
+        .letter-paper {
+            position: absolute;
+            top: 6%; left: 5%;
+            width: 90%; height: auto;
+            min-height: 88%;
+            background: linear-gradient(180deg, #fffef9 0%, #fffdf7 50%, #fdfaf2 100%);
+            z-index: 20;
+            border-radius: 6px;
+            padding: 20px 20px 24px;
+            box-shadow:
+                inset 0 0 0 1px rgba(0,0,0,0.03),
+                0 10px 30px rgba(0,0,0,0.12);
+            transform: translateY(0) scale(0.9);
+            opacity: 0;
+            transition: all 0.6s ease 0.5s;
+            font-size: 13.5px;
+            line-height: 1.85;
+            color: #2a1a0a;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+        /* 信纸横格线 */
+        .letter-paper::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                transparent,
+                transparent 28px,
+                rgba(200,180,160,0.12) 28px,
+                rgba(200,180,160,0.12) 29px
+            );
+            pointer-events: none;
+            border-radius: inherit;
+            z-index: 0;
+        }
+        .letter-paper > * { position: relative; z-index: 1; }
+
+        .envelope.open .letter-paper {
+            opacity: 1;
+            transform: translateY(-42%) scale(1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.04);
+        }
+
+        .letter-paper .greeting {
+            font-size: 16px; font-weight: 800;
+            margin-bottom: 10px; letter-spacing: 2px;
+        }
+
+        .letter-paper .body-text { margin-bottom: 7px; }
+
+        .letter-paper .sign-off {
+            text-align: right; margin-top: 12px;
+            font-style: italic; color: #8b6a4a;
+            letter-spacing: 2px; font-weight: 700;
+        }
+
+        .letter-paper .highlight { font-weight: 800; }
+
+        .click-hint {
+            position: absolute; bottom: 14px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px; color: #b0a090;
+            z-index: 25; letter-spacing: 3px;
+            animation: blink 2s infinite; pointer-events: none;
+        }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+        .envelope.open .click-hint { display: none; }
+
+        .envelope-bottom {
+            position: absolute; bottom: 0; left: 0;
+            width: 100%; height: 32%;
+            background: linear-gradient(0deg, #e8d5bc 0%, transparent 100%);
+            border-radius: 0 0 8px 8px; z-index: 4;
+        }
+
+        .back-btn {
+            position: fixed; top: 20px; left: 24px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 20px; color: #8b6a4a;
+            text-decoration: none; font-size: 13px;
+            letter-spacing: 1px; z-index: 600;
+            transition: all 0.3s;
+        }
+        .back-btn:hover { background: #fff; }
+
+        .music-fab {
+            position: fixed; bottom: 30px; left: 30px;
+            width: 46px; height: 46px;
+            background: rgba(200,150,150,0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(200,150,150,0.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; cursor: pointer; z-index: 100;
+            color: #a07060; text-decoration: none;
+        }
+        .music-fab:hover { transform: scale(1.1); }
+
+        @media (max-width: 768px) {
+            .envelope-wrapper { max-width: 96%; }
+            .letter-paper { padding: 14px 12px 18px; font-size: 11.5px; line-height: 1.7; }
+            .letter-paper .greeting { font-size: 14px; }
+            .countdown-overlay .countdown-title { font-size: 18px; }
+            .countdown-overlay .countdown-time { font-size: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-transition"></div>
+
+    <video class="video-bg" autoplay muted loop playsinline>
+        <source src="letter.mp4" type="video/mp4">
+    </video>
+
+    <div class="countdown-overlay" id="countdownOverlay">
+        <div class="countdown-title">💌 信封将在以下时间解锁</div>
+        <div class="countdown-time" id="countdownTime">--</div>
+        <div class="countdown-sub">2026年7月13日 00:00 起可打开</div>
+    </div>
+
+    <a href="home.html" class="back-btn" onclick="event.preventDefault();goTo('home.html')">← 返回</a>
+
+    <div class="envelope-wrapper" onclick="openEnvelope()">
+        <div class="envelope" id="envelope">
+            <div class="envelope-flap"></div>
+            <div class="seal"></div>
+            <div class="letter-paper" id="letterPaper">
+                <div class="greeting">致王小二：</div>
+                <div class="body-text">
+                    嘿嘿嘿嘿，谁敢想谁敢想，居然已经是认识的两年半了感觉还蛮不错的。越聊越发现你是个很好很可爱的人，这说明我看人的眼光也是很好的嘿嘿。
+                </div>
+                <div class="body-text">
+                    要说说我对你的印象吗？不要也来不及了哈哈，首先你是一个很自足的人，我觉得这是你最重要的人格底色，可能你这么喜欢芙也是因为这个吧。很像江浙人，可以这样说吗？反正现在就我一个人在自言自语那我就随便说了哈哈。很会打算，很有规划，很有赚钱目标的感觉。接钱辈嘛我也想接嘿嘿。
+                </div>
+                <div class="body-text">
+                    然后呢是一个非常非常非常善良的人，会因为别人的苦难而大哭一场，这是很浪漫的事，非常非常地触动了我。然后呢，还是一个真诚的，体面的，有艺术素养的，温暖的，乐于尝试的……。总而言之，简直是一个完美的人！实在也是想不出别的词能形容了，完美的王小二？唯一的王小二？身价有没有×3？
+                </div>
+                <div class="body-text">
+                    也不多说了嘿嘿，字多看着可能烦。反正和你相处起来我很很很很舒服啊。高山流水觅知音，香味相投有没有感觉？！所以我对你的祝福是最最最最真心的，想让你开心，欢乐，无忧无虑，一直好运的在未来的日子里吧！！！我的嘴其实蛮灵的，你相信的话就更灵了<span class="highlight">⌯>ᴗo⌯ .ᐟ.ᐟ</span>
+                </div>
+                <div class="body-text">
+                    祝王小二在新的一岁永远开心<span class="highlight">₍ᐢ..ᐢ₎♡</span>
+                </div>
+                <div class="sign-off">—— 我终于</div>
+            </div>
+            <div class="envelope-bottom"></div>
+            <div class="click-hint" id="clickHint">— 点击打开信封 —</div>
+        </div>
+    </div>
+
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script>
+        function goTo(page){
+            document.querySelector('.page-transition').classList.add('out');
+            setTimeout(() => { window.location.href = page; }, 400);
+        }
+        const unlockDate = new Date(2026, 6, 13, 0, 0, 0);
+        const overlay = document.getElementById('countdownOverlay');
+        const countdownTime = document.getElementById('countdownTime');
+
+        function updateCountdown() {
+            const n = new Date();
+            const diff = unlockDate - n;
+            if (diff <= 0) { overlay.style.display = 'none'; return; }
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+            countdownTime.textContent = `${days}天 ${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+        }
+
+        if (new Date() >= unlockDate) {
+            overlay.style.display = 'none';
+        } else {
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        }
+
+        let opened = false;
+        function openEnvelope() {
+            if (new Date() < unlockDate) return;
+            if (opened) return;
+            opened = true;
+            document.getElementById('envelope').classList.add('open');
+            document.getElementById('clickHint').style.display = 'none';
+        }
+    </script>
+    <iframe src="bgm.html" style="display:none;"></iframe>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0713</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <style>
+        :root { --on: 0; --shade-hue: 40; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 50px 80px;
+            overflow: hidden;
+        }
+
+        /* 视频背景 */
+        .video-bg {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; z-index: -2;
+        }
+
+        /* 遮罩：灯关全黑 → 灯亮变亮 */
+        .overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: -1;
+            transition: background 1s cubic-bezier(0.23,1,0.32,1);
+        }
+        .lamp-on .overlay { background: rgba(0,0,0,0.3); }
+
+        /* 页面过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0f14; z-index: 99999;
+            animation: pageIn 0.5s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        .page-transition.out { animation: pageOut 0.4s cubic-bezier(0.23,1,0.32,1) forwards; }
+        @keyframes pageIn { 0%{opacity:1;} 100%{opacity:0;} }
+        @keyframes pageOut { 0%{opacity:0;} 100%{opacity:1;} }
+
+        /* ====== 左侧：台灯 + Hero文字 ====== */
+        .left-section {
+            position: relative; z-index: 1;
+            flex: 1;
+            padding-right: 60px;
+        }
+
+        /* 文字居屏幕垂直中央，作为台灯的定位锚点 */
+        .hero-text {
+            position: relative;
+            z-index: 1;
+        }
+        .hero-content {
+            opacity: 0;
+            transition: opacity 0.6s 0.4s ease;
+        }
+        .lamp-on .hero-content { opacity: 1; }
+
+        /* 台灯绝对定位在文字上方，不受透明度影响 */
+        .lamp-wrap {
+            position: absolute;
+            bottom: 100%;
+            left: -20px;
+            margin-bottom: 0;
+        }
+        .lamp-wrap svg {
+            width: 190px; height: 350px;
+            display: block;
+        }
+
+        .lamp-hint {
+            text-align: center; color: #556;
+            font-size: 10px; letter-spacing: 3px;
+            margin-top: -20px;
+            opacity: 0; transition: opacity 0.5s;
+            position: relative; z-index: 2;
+        }
+        .lamp-on .lamp-hint { opacity: 0; }
+        .lamp-hint.show { opacity: 1; animation: hintBlink 3s ease-in-out infinite; }
+        @keyframes hintBlink { 0%,100%{opacity:0.35;} 50%{opacity:1;} }
+
+        .hero-text h1 {
+            font-size: 38px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            line-height: 1.3;
+            background: linear-gradient(135deg, hsl(var(--shade-hue),80%,85%), hsl(var(--shade-hue),60%,60%));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: background 0.5s ease;
+        }
+        .hero-text .ovo {
+            font-size: 34px;
+            font-weight: 300;
+            letter-spacing: 6px;
+            color: hsl(var(--shade-hue),55%,65%);
+            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            margin-top: 2px;
+            transition: color 0.5s ease;
+        }
+        .hero-text .line {
+            width: 110px; height: 2px;
+            background: linear-gradient(90deg, hsl(var(--shade-hue),60%,60%), hsl(var(--shade-hue),70%,50%));
+            margin-top: 20px;
+            border-radius: 2px;
+            transition: background 0.5s ease;
+        }
+
+        /* ====== 右侧：登录表单 ====== */
+        .login-container {
+            position: relative; z-index: 1;
+            background: rgba(18,25,33,0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid hsl(var(--shade-hue),60%,45%);
+            border-radius: 24px;
+            padding: 38px 34px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow:
+                0 0 30px hsla(var(--shade-hue),60%,50%,0.3),
+                0 0 80px hsla(var(--shade-hue),60%,50%,0.08),
+                0 8px 32px rgba(0,0,0,0.4);
+            text-align: center;
+            flex-shrink: 0;
+            opacity: 0;
+            transform: scale(0.88);
+            pointer-events: none;
+            transition: opacity 0.55s cubic-bezier(0.68,-0.55,0.265,1.55),
+                        transform 0.55s cubic-bezier(0.68,-0.55,0.265,1.55),
+                        border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+        .lamp-on .login-container {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .title {
+            font-size: 20px; font-weight: 700;
+            margin-bottom: 24px; letter-spacing: 2px;
+            font-family: 'PingFang SC','Microsoft YaHei','SimHei','Heiti SC',sans-serif;
+            background: linear-gradient(135deg, hsl(var(--shade-hue),70%,75%), hsl(var(--shade-hue),80%,55%));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: background 0.5s ease;
+        }
+
+        .input-group { margin-bottom: 16px; text-align: left; }
+        .input-group label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: #8a9aaa; margin-bottom: 6px; letter-spacing: 0.5px;
+        }
+        .input-group input {
+            width: 100%; padding: 12px 14px;
+            border: 1.5px solid #2a3540; border-radius: 12px;
+            font-size: 14px; outline: none;
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+            background: rgba(20,30,42,0.8); color: #e0e8f0;
+        }
+        .input-group input::placeholder { color: #4a5a6a; }
+        .input-group input:focus {
+            border-color: hsl(var(--shade-hue),60%,55%);
+            box-shadow: 0 0 0 4px hsla(var(--shade-hue),60%,50%,0.12),
+                        0 0 20px hsla(var(--shade-hue),60%,50%,0.08);
+            background: rgba(20,30,42,0.95);
+        }
+
+        .login-btn {
+            width: 100%; padding: 13px;
+            background: linear-gradient(135deg, hsl(var(--shade-hue),60%,50%), hsl(calc(var(--shade-hue)+15),65%,40%));
+            color: #fff; font-size: 16px; font-weight: 600;
+            border: none; border-radius: 12px; cursor: pointer;
+            letter-spacing: 1px; margin-top: 6px;
+            transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+            box-shadow: 0 4px 18px hsla(var(--shade-hue),60%,50%,0.35);
+        }
+        .login-btn:hover {
+            box-shadow: 0 6px 28px hsla(var(--shade-hue),60%,50%,0.5);
+            transform: translateY(-1px); filter: brightness(1.1);
+        }
+        .login-btn:active { transform: scale(0.97); }
+
+        .error-msg { color: #ff6b6b; font-size: 12px; margin-top: 10px; min-height: 18px; }
+        .error-msg.shake { animation: shakeError 0.4s ease; }
+        @keyframes shakeError {
+            0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);}
+        }
+
+        /* 音乐按钮 */
+        .music-fab {
+            position: fixed; bottom: 30px; left: 30px;
+            width: 46px; height: 46px;
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; cursor: pointer; z-index: 100;
+            transition: all 0.35s ease; color: #889; text-decoration: none;
+            opacity: 0; pointer-events: none;
+        }
+        .lamp-on .music-fab {
+            opacity: 1; pointer-events: auto;
+            transition: opacity 0.6s 0.5s ease, all 0.35s ease;
+        }
+        .music-fab:hover {
+            background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3);
+            transform: scale(1.1); box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 750px) {
+            body { justify-content: center; padding: 30px 20px; flex-direction: column; gap: 20px; }
+            .hero-text { flex: none; padding-right: 0; align-items: center; text-align: center; }
+            .lamp-wrap { margin-left: 0; }
+            .lamp-wrap svg { width: 140px; height: 270px; }
+            .hero-text h1 { font-size: 26px; }
+            .hero-text .ovo { font-size: 24px; }
+            .login-container { max-width: 320px; padding: 28px 22px; }
+        }
+        @media (max-width: 400px) {
+            .lamp-wrap svg { width: 110px; height: 220px; }
+            .hero-text h1 { font-size: 20px; letter-spacing: 1px; }
+            .hero-text .ovo { font-size: 18px; }
+            .login-container { max-width: 280px; padding: 24px 16px; }
+        }
+    </style>
+</head>
+<body class="lamp-off">
+
+    <div class="page-transition"></div>
+
+    <video class="video-bg" autoplay muted loop playsinline>
+        <source src="1.mp4" type="video/mp4">
+    </video>
+
+    <div class="overlay"></div>
+
+    <!-- 左侧：台灯 + Hero文字 -->
+    <div class="left-section">
+        <div class="hero-text">
+            <div class="lamp-wrap">
+                <svg viewBox="0 0 300 500" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="hsl(var(--shade-hue),80%,70%)" stop-opacity="0.7"/>
+                        <stop offset="30%" stop-color="hsl(var(--shade-hue),70%,55%)" stop-opacity="0.4"/>
+                        <stop offset="60%" stop-color="hsl(var(--shade-hue),50%,40%)" stop-opacity="0.1"/>
+                        <stop offset="100%" stop-color="hsl(var(--shade-hue),30%,20%)" stop-opacity="0"/>
+                    </radialGradient>
+                    <radialGradient id="baseShadow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#0a0f14" stop-opacity="0.6"/>
+                        <stop offset="100%" stop-color="#0a0f14" stop-opacity="0"/>
+                    </radialGradient>
+                    <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="15"/>
+                    </filter>
+                </defs>
+
+                <ellipse id="bgGlow" cx="150" cy="340" rx="140" ry="120"
+                    fill="url(#lampGlow)" opacity="0" filter="url(#softGlow)"/>
+                <polygon id="lightCone" points="100,255 200,255 280,430 20,430"
+                    fill="url(#lampGlow)" opacity="0"/>
+
+                <ellipse cx="150" cy="446" rx="75" ry="14" fill="url(#baseShadow)" opacity="0.5"/>
+                <rect x="85" y="432" width="130" height="18" rx="8" fill="#1a2530" stroke="#25303a" stroke-width="1.5"/>
+                <rect x="95" y="438" width="110" height="6" rx="3" fill="#1e2a36" opacity="0.5"/>
+                <rect x="125" y="410" width="50" height="24" rx="6" fill="#1e2b36" stroke="#25303a" stroke-width="1"/>
+
+                <path d="M150,412 Q185,320 150,258" stroke="#1e2b36" stroke-width="9" fill="none" stroke-linecap="round"/>
+                <path d="M150,412 Q185,320 150,258" stroke="#25303a" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+                <path d="M72,150 L228,150 Q238,150 242,160 L250,248 Q252,255 244,255 L56,255 Q48,255 50,248 L58,160 Q62,150 72,150 Z"
+                    fill="#1e2a36" stroke="#2a3642" stroke-width="2"/>
+                <path id="shadeFace" d="M78,155 L222,155 Q230,155 234,162 L240,248 Q242,252 236,252 L64,252 Q58,252 60,248 L66,162 Q70,155 78,155 Z"
+                    fill="#24303d" stroke="none"/>
+                <line x1="72" y1="150" x2="228" y2="150" stroke="#2a3642" stroke-width="1.5"/>
+
+                <g id="eyeLeft" transform="rotate(180,125,210)">
+                    <circle cx="125" cy="210" r="17" fill="#f5f5f0" stroke="#1e2a36" stroke-width="1.5"/>
+                    <circle cx="125" cy="203" r="8" fill="#1a1a1a"/>
+                    <circle cx="127" cy="200" r="2.5" fill="#fff" opacity="0.7"/>
+                </g>
+                <g id="eyeRight" transform="rotate(180,175,210)">
+                    <circle cx="175" cy="210" r="17" fill="#f5f5f0" stroke="#1e2a36" stroke-width="1.5"/>
+                    <circle cx="175" cy="203" r="8" fill="#1a1a1a"/>
+                    <circle cx="177" cy="200" r="2.5" fill="#fff" opacity="0.7"/>
+                </g>
+
+                <path d="M140,232 Q150,242 160,232" stroke="#1e2a36" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+                <circle id="bulb" cx="150" cy="256" r="10" fill="#3a4a5a"/>
+                <circle id="bulbInner" cx="150" cy="256" r="6" fill="#2a3540"/>
+
+                <path id="pullCord" d="M150,258 C153,285 147,300 150,335"
+                    stroke="#4a5568" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <circle id="pullHandle" cx="150" cy="340" r="9"
+                    fill="#3a4550" stroke="#4a5568" stroke-width="1.5" style="cursor:grab;"/>
+                <circle cx="148" cy="338" r="2.5" fill="#5a6578" opacity="0.5"/>
+                <circle cx="150" cy="348" r="4" fill="#2a3540"/>
+            </svg>
+            <div class="lamp-hint" id="lampHint">↓ 拉绳开灯</div>
+        </div>
+
+            <div class="hero-content">
+                <h1>欢迎王佳宁寿星驾到</h1>
+                <div class="ovo">OVO</div>
+                <div class="line"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：登录表单（原位置） -->
+    <div class="login-container" id="loginContainer">
+        <div class="title">登录</div>
+        <div class="input-group">
+            <label>账号</label>
+            <input type="text" id="username" placeholder="请输入账号" autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label>密码</label>
+            <input type="password" id="password" placeholder="请输入密码">
+        </div>
+        <button class="login-btn" onclick="login()">登 录</button>
+        <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script>
+        let lampOn = false;
+        let currentHue = 40;
+        const root = document.documentElement;
+        root.style.setProperty('--shade-hue', currentHue);
+
+        function playClickSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                const o1 = ctx.createOscillator(), g1 = ctx.createGain();
+                o1.type = 'square'; o1.frequency.setValueAtTime(600,now);
+                o1.frequency.exponentialRampToValueAtTime(200,now+0.08);
+                g1.gain.setValueAtTime(0.08,now);
+                g1.gain.exponentialRampToValueAtTime(0.001,now+0.1);
+                o1.connect(g1); g1.connect(ctx.destination);
+                o1.start(now); o1.stop(now+0.1);
+                const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+                o2.type = 'sine'; o2.frequency.setValueAtTime(1200,now);
+                o2.frequency.exponentialRampToValueAtTime(800,now+0.05);
+                g2.gain.setValueAtTime(0.04,now);
+                g2.gain.exponentialRampToValueAtTime(0.001,now+0.06);
+                o2.connect(g2); g2.connect(ctx.destination);
+                o2.start(now); o2.stop(now+0.06);
+            } catch(e) {}
+        }
+
+        function toggleLamp() {
+            lampOn = !lampOn;
+            if (lampOn) {
+                currentHue = Math.floor(Math.random() * 360);
+                root.style.setProperty('--shade-hue', currentHue);
+                root.style.setProperty('--on', '1');
+                document.body.classList.add('lamp-on');
+                document.body.classList.remove('lamp-off');
+            } else {
+                root.style.setProperty('--on', '0');
+                document.body.classList.remove('lamp-on');
+                document.body.classList.add('lamp-off');
+            }
+            playClickSound();
+            updateLampVisuals();
+        }
+
+        function updateLampVisuals() {
+            const el = document.getElementById('eyeLeft'), er = document.getElementById('eyeRight');
+            const glow = document.getElementById('bgGlow'), cone = document.getElementById('lightCone');
+            const bulb = document.getElementById('bulb'), bi = document.getElementById('bulbInner');
+            const sf = document.getElementById('shadeFace');
+
+            if (lampOn) {
+                gsap.to(el, { duration:0.5, rotation:0, transformOrigin:'125px 210px', ease:'back.out(1.5)' });
+                gsap.to(er, { duration:0.5, rotation:0, transformOrigin:'175px 210px', ease:'back.out(1.5)' });
+                gsap.to(glow, { duration:0.6, attr:{opacity:1}, ease:'power2.out' });
+                gsap.to(cone, { duration:0.6, attr:{opacity:0.35}, ease:'power2.out' });
+                bulb.setAttribute('fill','#fffbe6');
+                bi.setAttribute('fill','hsl('+currentHue+',80%,75%)');
+                sf.setAttribute('fill','hsl('+currentHue+',12%,24%)');
+                document.getElementById('lampHint').classList.remove('show');
+            } else {
+                gsap.to(el, { duration:0.5, rotation:180, transformOrigin:'125px 210px', ease:'back.out(1.5)' });
+                gsap.to(er, { duration:0.5, rotation:180, transformOrigin:'175px 210px', ease:'back.out(1.5)' });
+                gsap.to(glow, { duration:0.5, attr:{opacity:0}, ease:'power2.in' });
+                gsap.to(cone, { duration:0.5, attr:{opacity:0}, ease:'power2.in' });
+                bulb.setAttribute('fill','#3a4a5a');
+                bi.setAttribute('fill','#2a3540');
+                sf.setAttribute('fill','#24303d');
+                document.getElementById('lampHint').classList.add('show');
+            }
+        }
+
+        // 拉绳拖拽
+        const pullHandle = document.getElementById('pullHandle');
+        const pullCord = document.getElementById('pullCord');
+        let isDragging = false, startY = 0, hasTriggered = false;
+        const THRESH = 50;
+
+        setTimeout(() => { document.getElementById('lampHint').classList.add('show'); }, 1500);
+
+        function getPY(e) { return e.touches ? e.touches[0].clientY : e.clientY; }
+
+        pullHandle.addEventListener('pointerdown', function(e) {
+            e.preventDefault(); isDragging = true; hasTriggered = false;
+            startY = getPY(e); pullHandle.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('pointermove', function(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            const d = Math.max(0, Math.min(getPY(e) - startY, 90));
+            pullCord.setAttribute('d','M150,258 C153,'+(285+d*0.35)+' 147,'+(300+d*0.6)+' 150,'+(335+d));
+            pullHandle.setAttribute('cy', 340 + d);
+            if (d > THRESH && !hasTriggered) { hasTriggered = true; toggleLamp(); }
+        });
+
+        document.addEventListener('pointerup', function() {
+            if (!isDragging) return;
+            isDragging = false; pullHandle.style.cursor = 'grab';
+            const cy = parseFloat(pullHandle.getAttribute('cy')) || 340;
+            const obj = { h:cy, e:cy-5, c1:285+(cy-340)*0.35, c2:300+(cy-340)*0.6 };
+            gsap.to(obj, {
+                h:340, e:335, c1:285, c2:300,
+                duration:0.8, ease:'elastic.out(1,0.4)',
+                onUpdate() {
+                    pullCord.setAttribute('d','M150,258 C153,'+obj.c1+' 147,'+obj.c2+' 150,'+obj.e);
+                    pullHandle.setAttribute('cy', obj.h);
+                }
+            });
+        });
+
+        pullHandle.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const t = e.touches[0];
+            pullHandle.dispatchEvent(new MouseEvent('pointerdown',{clientX:t.clientX,clientY:t.clientY}));
+        }, {passive:false});
+        document.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            const t = e.touches[0];
+            document.dispatchEvent(new MouseEvent('pointermove',{clientX:t.clientX,clientY:t.clientY}));
+        }, {passive:false});
+        document.addEventListener('touchend', function() {
+            if (!isDragging) return;
+            document.dispatchEvent(new MouseEvent('pointerup',{}));
+        });
+
+        // 登录
+        const CORRECT_USERNAME = '王小二', CORRECT_PASSWORD = '0713';
+        function login() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            const em = document.getElementById('errorMsg');
+            if (!u || !p) {
+                em.textContent = '请输入账号和密码';
+                em.classList.remove('shake'); void em.offsetWidth; em.classList.add('shake');
+                return;
+            }
+            if (u === CORRECT_USERNAME && p === CORRECT_PASSWORD) {
+                em.textContent = '';
+                document.querySelector('.page-transition').classList.add('out');
+                setTimeout(() => { window.location.href = 'home.html'; }, 400);
+            } else {
+                em.textContent = '账号或密码错误，请重试';
+                em.classList.remove('shake'); void em.offsetWidth; em.classList.add('shake');
+                document.getElementById('password').value = '';
+            }
+        }
+        document.addEventListener('keydown', function(e) { if (e.key==='Enter') login(); });
+
+        // 初始化
+        gsap.set('#eyeLeft', { rotation:180, transformOrigin:'125px 210px' });
+        gsap.set('#eyeRight', { rotation:180, transformOrigin:'175px 210px' });
+        document.getElementById('lampHint').classList.add('show');
+    </script>
+</body>
+</html>

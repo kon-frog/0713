@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 音乐 </title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Helvetica Neue', 'Arial', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f2f2f2;
+            color: #000;
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: auto;
+        }
+
+        .custom-cursor { position: fixed; width: 12px; height: 12px; background: #000; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); transition: width 0.2s,height 0.2s,background 0.2s; mix-blend-mode: difference; }
+        .custom-cursor.hover { width: 20px; height: 20px; background: #ff2222; }
+
+        /* 水波纹画布 */
+        #rippleCanvas {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+            opacity: 0.55;
+        }
+
+        /* 页面过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f2f2f2; z-index: 99999;
+            animation: pageIn 0.5s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        .page-transition.out {
+            animation: pageOut 0.4s cubic-bezier(0.23,1,0.32,1) forwards;
+        }
+        @keyframes pageIn { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes pageOut { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+        .top-divider { position: fixed; top: 0; left: 0; width: 100%; height: 1px; background: #000; z-index: 100; }
+        .top-nav { position: fixed; top: 1px; left: 0; width: 100%; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; z-index: 99; background: rgba(242,242,242,0.95); }
+        .nav-logo { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+        .nav-center { display: flex; gap: 40px; font-size: 12px; font-weight: 500; letter-spacing: 3px; }
+        .nav-center a { color: #000; text-decoration: none; transition: color 0.3s; cursor: pointer; }
+        .nav-center a:hover { color: #ff2222; }
+        .nav-right { width: 32px; height: 32px; border: 1.5px solid #000; border-radius: 50%; cursor: pointer; transition: all 0.3s; }
+        .nav-right:hover { background: #ff2222; border-color: #ff2222; }
+
+        .main-layout { display: flex; min-height: 100vh; padding-top: 61px; position: relative; }
+
+        .center-divider {
+            position: fixed; top: 61px; left: 50%; transform: translateX(-50%);
+            width: 1px; height: calc(100vh - 61px);
+            background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.06) 5%, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.06) 95%, transparent 100%);
+            z-index: 10; pointer-events: none;
+        }
+        .center-divider::after {
+            content: '◆'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            font-size: 8px; color: rgba(0,0,0,0.25); background: #f2f2f2; padding: 4px; line-height: 1;
+        }
+
+        .left-panel { width: 50%; padding: 40px 30px 50px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; }
+        .left-title { font-size: 90px; font-weight: 900; letter-spacing: -2px; line-height: 0.85; color: #000; transition: all 0.5s cubic-bezier(0.23,1,0.32,1); z-index: 2; position: relative; padding-left: 10px; }
+        .left-title.changing { transform: translateY(-10px); opacity: 0; }
+        .left-sub { font-size: 13px; font-weight: 500; letter-spacing: 2px; margin-top: 14px; display: flex; align-items: center; gap: 8px; color: #000; text-decoration: none; cursor: pointer; transition: color 0.3s; z-index: 2; position: relative; padding-left: 10px; }
+        .left-sub:hover { color: #ff2222; }
+        .left-sub .arrow { font-size: 15px; transition: transform 0.3s; }
+        .left-sub:hover .arrow { transform: translateX(6px); }
+
+        .card-stack { position: absolute; top: 46%; left: 48%; transform: translate(-50%,-50%); width: 360px; height: 500px; pointer-events: none; perspective: 1400px; }
+        .stack-card { position: absolute; top: 0; left: 0; width: 340px; height: 460px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 20px; letter-spacing: 3px; box-shadow: 0 20px 55px rgba(255,34,34,0.18); transition: all 0.6s cubic-bezier(0.25,0.8,0.25,1.2); text-align: center; line-height: 1.4; overflow: hidden; background: #ff2222; }
+        .stack-card.card-current {
+            transform: translateZ(90px) rotateY(0deg) scale(1); z-index: 5; opacity: 1;
+            box-shadow: 0 35px 70px rgba(255,34,34,0.3), 0 0 0 4px #ff2222;
+        }
+        .stack-card.card-current::after {
+            content: '';
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg,
+                rgba(255,255,255,0.15) 0%,
+                rgba(255,255,255,0.04) 30%,
+                transparent 60%);
+            border-radius: inherit; pointer-events: none;
+        }
+        .stack-card.card-next1 { transform: translateZ(35px) translateY(12px) translateX(12px) rotateY(-3deg) scale(0.91); z-index: 4; opacity: 0.6; filter: brightness(0.8); }
+        .stack-card.card-next2 { transform: translateZ(-30px) translateY(26px) translateX(26px) rotateY(-5deg) scale(0.81); z-index: 3; opacity: 0.35; filter: brightness(0.62); }
+        .stack-card.card-next3 { transform: translateZ(-85px) translateY(42px) translateX(42px) rotateY(-7deg) scale(0.71); z-index: 2; opacity: 0.18; filter: brightness(0.46); }
+        .stack-card.card-next4 { transform: translateZ(-145px) translateY(60px) translateX(60px) rotateY(-9deg) scale(0.6); z-index: 1; opacity: 0.08; filter: brightness(0.3); }
+        .stack-card-img { width: 100%; height: 100%; object-fit: cover; }
+
+        .right-panel { width: 50%; padding: 30px 35px; display: flex; flex-direction: column; justify-content: center; gap: 14px; position: relative; }
+
+        .vinyl-container {
+            width: 100%; max-width: 300px; aspect-ratio: 1/1;
+            position: relative; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto;
+        }
+        #waveCanvas {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 5;
+        }
+        .vinyl-disc {
+            width: 100%; height: 100%; border-radius: 50%;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #1a1a1a 3%, #222 3.5%, #111 14%, #1a1a1a 15%, #0d0d0d 32%, #1a1a1a 33%, #0a0a0a 52%, #1a1a1a 53%, #0d0d0d 72%, #1a1a1a 73%, #111 92%, #1a1a1a 93%, #0a0a0a 100%);
+            box-shadow: 0 0 0 4px #2a2a2a, 0 0 0 8px #1a1a1a, 0 0 0 10px #3a3a3a, 0 14px 40px rgba(0,0,0,0.4);
+            position: relative;
+            animation: spin 3s linear infinite;
+            animation-play-state: paused;
+        }
+        .vinyl-disc.playing { animation-play-state: running; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .vinyl-label {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 65%; height: 65%; border-radius: 50%; overflow: hidden; z-index: 2;
+            border: 3px solid #2a2a2a;
+        }
+        .vinyl-label img { width: 100%; height: 100%; object-fit: cover; animation: spin 3s linear infinite; animation-play-state: inherit; }
+        .vinyl-hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 6%; height: 6%; background: #f2f2f2; border-radius: 50%; z-index: 3; box-shadow: inset 0 2px 3px rgba(0,0,0,0.5); }
+
+        /* 唱臂 */
+        .tonearm {
+            position: absolute;
+            top: -16%; right: -4%;
+            width: 52%; height: 112%;
+            z-index: 10;
+            transform-origin: top right;
+            transform: rotate(0deg);
+            transition: transform 0.8s cubic-bezier(0.25,0.8,0.25,1.2);
+            pointer-events: none;
+        }
+        .tonearm.on-record {
+            transform: rotate(20deg);
+            animation: tonearmVibrate 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes tonearmVibrate {
+            0% { transform: rotate(19.6deg); }
+            100% { transform: rotate(20.4deg); }
+        }
+
+        .tonearm-base {
+            position: absolute; top: 0; right: 0;
+            width: 26px; height: 26px;
+            background: #555; border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .tonearm-arm {
+            position: absolute; top: 12px; right: 12px;
+            width: 5px; height: 64%;
+            background: linear-gradient(180deg, #aaa, #777 30%, #444 100%);
+            border-radius: 3px;
+            transform-origin: top center;
+        }
+        .tonearm-head-connector {
+            position: absolute;
+            bottom: 34%; right: 7px;
+            width: 22px; height: 5px;
+            background: #666; border-radius: 3px;
+        }
+        .tonearm-head {
+            position: absolute;
+            bottom: 32.5%; right: 24px;
+            width: 24px; height: 12px;
+            background: #444; border-radius: 3px 3px 5px 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .right-title { font-size: 24px; font-weight: 900; letter-spacing: 1px; color: #000; transition: all 0.4s; text-align: center; }
+        .lyrics-box { font-size: 13px; line-height: 2; color: #555; max-width: 340px; text-align: center; letter-spacing: 2px; font-style: italic; font-family: 'Georgia','Times New Roman',serif; margin: 0 auto; }
+
+        .player-section { margin-top: 2px; display: flex; flex-direction: column; gap: 6px; max-width: 340px; margin: 0 auto; width: 100%; overflow: visible; }
+        .now-playing { font-size: 10px; letter-spacing: 3px; color: #ff2222; font-weight: 700; text-transform: uppercase; text-align: center; animation: nowPlayingPulse 1.5s ease-in-out infinite; }
+        @keyframes nowPlayingPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .player-controls { display: flex; align-items: center; gap: 10px; }
+        .ctrl-btn { width: 36px; height: 36px; border: 1.5px solid #000; border-radius: 50%; background: transparent; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: all 0.3s; color: #000; flex-shrink: 0; }
+        .ctrl-btn:hover { background: #000; color: #fff; }
+        .ctrl-btn:active { background: #ff2222; border-color: #ff2222; color: #fff; }
+        audio { flex: 1; height: 34px; cursor: auto; min-width: 0; }
+
+        .song-list { display: flex; flex-direction: column; gap: 1px; max-height: 140px; overflow-y: scroll; padding-right: 4px; cursor: auto; border: 1px solid #e8e8e8; border-radius: 10px; }
+        .song-list::-webkit-scrollbar { width: 3px; }
+        .song-list::-webkit-scrollbar-track { background: transparent; }
+        .song-list::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+        .song-list::-webkit-scrollbar-thumb:hover { background: #aaa; }
+        .song-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); border-radius: 7px; margin: 1px 4px; }
+        .song-item:first-child { margin-top: 4px; }
+        .song-item:last-child { margin-bottom: 4px; }
+        .song-item:hover,.song-item.active { background: #000; color: #fff; }
+        .song-item:hover { padding-left: 18px; transform: translateX(4px); }
+        .song-item.active { box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+        .song-item .song-index { font-weight: 700; width: 22px; opacity: 0.4; }
+        .song-item:hover .song-index,.song-item.active .song-index { opacity: 1; }
+        .song-item .song-name { flex: 1; }
+
+        .scroll-hint { font-size: 10px; letter-spacing: 3px; color: #bbb; position: absolute; bottom: 30px; right: 50px; z-index: 20; }
+        .back-link { position: fixed; bottom: 30px; left: 50px; font-size: 11px; letter-spacing: 3px; color: #999; text-decoration: none; cursor: pointer; z-index: 20; transition: color 0.3s; }
+        .back-link:hover { color: #ff2222; }
+
+        @media (max-width: 768px) {
+            .main-layout { flex-direction: column; }
+            .center-divider { display: none; }
+            .left-panel,.right-panel { width: 100%; padding: 25px 20px; }
+            .left-title { font-size: 48px; }
+            .card-stack { position: relative; top: auto; left: auto; transform: none; margin: 15px auto; width: 240px; height: 340px; }
+            .stack-card { width: 220px; height: 300px; }
+            .vinyl-container { max-width: 220px; }
+            .tonearm { top: -12%; right: -2%; height: 95%; width: 48%; }
+            .top-nav { padding: 0 16px; }
+            .nav-center { gap: 16px; font-size: 10px; }
+            .custom-cursor { display: none; }
+            .scroll-hint { display: none; }
+            .player-controls { gap: 8px; }
+            .ctrl-btn { width: 30px; height: 30px; font-size: 13px; }
+            .song-list { max-height: 110px; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="rippleCanvas"></canvas>
+    <div class="page-transition"></div>
+
+    <div class="custom-cursor" id="cursor"></div>
+    <div class="top-divider"></div>
+    <nav class="top-nav">
+        <div class="nav-logo">◈ KST</div>
+        <div class="nav-center">
+            <a href="home.html" onclick="event.preventDefault();goTo('home.html')">HOME</a>
+            <a href="music.html" style="color:#ff2222;">MUSIC</a>
+            <a href="#work">WORK</a>
+        </div>
+        <div class="nav-right"></div>
+    </nav>
+
+    <div class="center-divider"></div>
+
+    <div class="main-layout">
+        <div class="left-panel">
+            <div class="left-title" id="leftTitle">Music</div>
+            <a class="left-sub" href="home.html" onclick="event.preventDefault();goTo('home.html')">back to home <span class="arrow">→</span></a>
+            <div class="card-stack" id="cardStack">
+                <div class="stack-card"><img class="stack-card-img" src="1.jpg" alt=""></div>
+                <div class="stack-card"><img class="stack-card-img" src="2.jpg" alt=""></div>
+                <div class="stack-card"><img class="stack-card-img" src="3.jpg" alt=""></div>
+                <div class="stack-card"><img class="stack-card-img" src="4.jpg" alt=""></div>
+                <div class="stack-card"><img class="stack-card-img" src="5.jpg" alt=""></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <canvas id="waveCanvas"></canvas>
+            <div class="vinyl-container">
+                <div class="vinyl-disc" id="vinylDisc">
+                    <div class="vinyl-label"><img id="vinylLabelImg" src="1.jpg" alt=""></div>
+                    <div class="vinyl-hole"></div>
+                </div>
+                <div class="tonearm" id="tonearm">
+                    <div class="tonearm-base"></div>
+                    <div class="tonearm-arm"></div>
+                    <div class="tonearm-head-connector"></div>
+                    <div class="tonearm-head"></div>
+                </div>
+            </div>
+            <div class="right-title" id="songTitle">After Like</div>
+            <div class="lyrics-box">The Music Within Life...<br>What is it?</div>
+            <div class="player-section">
+                <div class="now-playing">♪ Now Playing</div>
+                <div class="player-controls">
+                    <button class="ctrl-btn" id="prevBtn">⏮</button>
+                    <audio id="audioPlayer" controls></audio>
+                    <button class="ctrl-btn" id="nextBtn">⏭</button>
+                </div>
+                <div class="song-list" id="songList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="scroll-hint">🖱 滚轮切歌</div>
+    <a href="home.html" class="back-link" onclick="event.preventDefault();goTo('home.html')">← BACK</a>
+
+    <script>
+        function goTo(page){
+            document.querySelector('.page-transition').classList.add('out');
+            setTimeout(() => { window.location.href = page; }, 400);
+        }
+        const songs = [
+            { index: 1, name: 'After Like', file: '1.mp3', image: '1.jpg' },
+            { index: 2, name: 'Stressed Out', file: '2.mp3', image: '2.jpg' },
+            { index: 3, name: '黑色柳丁', file: '3.mp3', image: '3.jpg' },
+            { index: 4, name: '冷雨夜', file: '4.mp3', image: '4.jpg' },
+            { index: 5, name: 'Free Loop', file: '5.mp3', image: '5.jpg' },
+            { index: 6, name: 'Sweet But Psycho', file: '6.mp3', image: '6.jpg' },
+            { index: 7, name: 'Greedy', file: '7.mp3', image: '7.jpg' },
+            { index: 8, name: 'You Look Lonely', file: '8.mp3', image: '8.jpg' },
+            { index: 9, name: 'Chained To The Rhythm', file: '9.mp3', image: '9.jpg' },
+            { index: 10, name: 'Hell Of A Night', file: '10.mp3', image: '10.jpg' },
+            { index: 11, name: 'Either Way', file: '11.mp3', image: '11.jpg' },
+            { index: 12, name: '喜欢', file: '12.mp3', image: '12.jpg' },
+            { index: 13, name: 'Deadman', file: '13.mp3', image: '13.jpg' },
+            { index: 14, name: 'On And On', file: '14.mp3', image: '14.jpg' },
+            { index: 15, name: 'Rude', file: '15.mp3', image: '15.jpg' },
+            { index: 16, name: '？？？', file: '16.mp3', image: '16.jpg' },
+        ];
+
+        const songListEl = document.getElementById('songList');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const leftTitle = document.getElementById('leftTitle');
+        const songTitle = document.getElementById('songTitle');
+        const vinylLabelImg = document.getElementById('vinylLabelImg');
+        const vinylDisc = document.getElementById('vinylDisc');
+        const tonearm = document.getElementById('tonearm');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const cardStack = document.getElementById('cardStack');
+        let currentIndex = 0;
+        const cardElements = cardStack.querySelectorAll('.stack-card');
+
+        function updateCardStack() {
+            const cardClasses = ['card-current', 'card-next1', 'card-next2', 'card-next3', 'card-next4'];
+            cardElements.forEach((card, i) => {
+                card.classList.remove(...cardClasses);
+                const songIndex = (currentIndex + i) % songs.length;
+                const img = card.querySelector('.stack-card-img');
+                if (img) img.src = songs[songIndex].image;
+                card.classList.add(cardClasses[i]);
+            });
+        }
+
+        function renderSongList() {
+            songListEl.innerHTML = '';
+            songs.forEach((song, i) => {
+                const div = document.createElement('div');
+                div.classList.add('song-item');
+                if (i === currentIndex) div.classList.add('active');
+                div.innerHTML = `<span class="song-index">${String(song.index).padStart(2,'0')}</span><span class="song-name">${song.name}</span>`;
+                div.addEventListener('click', () => playSong(i));
+                songListEl.appendChild(div);
+            });
+            const active = songListEl.querySelector('.song-item.active');
+            if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function updateLeftTitle(name) {
+            leftTitle.classList.add('changing');
+            setTimeout(() => { leftTitle.textContent = name; leftTitle.classList.remove('changing'); }, 250);
+        }
+
+        function setVinylPlaying(p) {
+            if (p) {
+                vinylDisc.classList.add('playing');
+                tonearm.classList.add('on-record');
+            } else {
+                vinylDisc.classList.remove('playing');
+                tonearm.classList.remove('on-record');
+            }
+        }
+
+        function playSong(index) {
+            currentIndex = index;
+            const song = songs[index];
+            audioPlayer.src = song.file;
+            audioPlayer.play().catch(() => {});
+            updateLeftTitle(song.name);
+            songTitle.textContent = song.name;
+            vinylLabelImg.src = song.image;
+            updateCardStack();
+            renderSongList();
+            setVinylPlaying(true);
+            localStorage.setItem('bgm_index', index);
+        }
+
+        function nextSong() { playSong((currentIndex + 1) % songs.length); }
+        function prevSong() { playSong((currentIndex - 1 + songs.length) % songs.length); }
+
+        prevBtn.addEventListener('click', prevSong);
+        nextBtn.addEventListener('click', nextSong);
+        audioPlayer.addEventListener('ended', nextSong);
+        audioPlayer.addEventListener('play', () => setVinylPlaying(true));
+        audioPlayer.addEventListener('pause', () => setVinylPlaying(false));
+
+        setInterval(() => {
+            if (!audioPlayer.paused) {
+                localStorage.setItem('bgm_time_' + currentIndex, audioPlayer.currentTime);
+                localStorage.setItem('bgm_index', currentIndex);
+            }
+        }, 2000);
+
+        let wheelTimeout;
+        document.addEventListener('wheel', (e) => {
+            if (e.target.closest('.song-list')) return;
+            e.preventDefault();
+            if (wheelTimeout) return;
+            wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 800);
+            if (e.deltaY > 0) nextSong(); else prevSong();
+        }, { passive: false });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); nextSong(); }
+            else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); prevSong(); }
+        });
+
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', (e) => { cursor.style.left = e.clientX+'px'; cursor.style.top = e.clientY+'px'; });
+        document.querySelectorAll('a, .nav-right, .ctrl-btn, .song-item').forEach(el => {
+            el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+            el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+        });
+
+        const savedIndex = parseInt(localStorage.getItem('bgm_index'));
+        if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex < songs.length) {
+            playSong(savedIndex);
+            setTimeout(() => { audioPlayer.pause(); setVinylPlaying(false); }, 100);
+        } else {
+            playSong(0);
+            setTimeout(() => { audioPlayer.pause(); setVinylPlaying(false); }, 100);
+        }
+
+        // ══════════════════════════════════════
+        //  水波纹特效 - 音乐节奏联动
+        // ══════════════════════════════════════
+        (function(){
+            const rippleCanvas = document.getElementById('rippleCanvas');
+            const rctx = rippleCanvas.getContext('2d');
+            resizeRipple(); window.addEventListener('resize', resizeRipple);
+            function resizeRipple(){ rippleCanvas.width=window.innerWidth; rippleCanvas.height=window.innerHeight; }
+
+            // Audio 分析
+            let audioCtx, analyser, source, dataArray;
+            let beatEnergy = 0, beatAvg = 0, beatCooldown = 0;
+            const BEAT_THRESH = 1.35, BEAT_COOLDOWN = 280; // ms
+
+            function setupAudio() {
+                try {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    // createMediaElementSource 只能调用一次，复用已有 source
+                    if (!source) {
+                        source = audioCtx.createMediaElementSource(audioPlayer);
+                    }
+                    // 断开旧的 analyser 再建新的
+                    if (analyser) { try { analyser.disconnect(); } catch(e){} }
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 256;
+                    analyser.smoothingTimeConstant = 0.75;
+                    source.disconnect();
+                    source.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                } catch(e) { /* 静默处理 */ }
+            }
+
+            // 首次用户交互时激活 AudioContext
+            document.addEventListener('click', function activate(){
+                if (audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+                if (!analyser) setupAudio();
+            }, {once:false});
+
+            // 切歌时重新连接 analyser
+            const origPlaySong = playSong;
+            playSong = function(idx) {
+                origPlaySong(idx);
+                setupAudio(); // 立即连接，不等延时
+            };
+
+            // 每次播放事件确保 analyser 已连接
+            audioPlayer.addEventListener('play', ()=>{
+                if (audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+                if (!analyser) setupAudio();
+            });
+
+            // ══════════════════════════════════════
+            //  背景海浪线 — 随节奏起伏
+            // ══════════════════════════════════════
+            const waveLines = [];
+            const LINE_COUNT = 10;
+            for (let i=0;i<LINE_COUNT;i++) {
+                waveLines.push({
+                    yBase: (i+1)/(LINE_COUNT+1),  // 0~1 垂直分布
+                    phase: Math.random()*Math.PI*2,
+                    speed: 0.003+Math.random()*0.006,
+                    amp: 0,
+                    targetAmp: 0,
+                    freqScale: 0.6+Math.random()*0.8,
+                    points: new Float32Array(Math.floor(200+Math.random()*100)),
+                });
+            }
+            let lineEnergy = 0;
+
+            function updateBgWaves() {
+                if (!analyser || audioPlayer.paused) {
+                    lineEnergy *= 0.9;
+                    beatCooldown = Math.max(0, beatCooldown-16);
+                    beatEnergy *= 0.92;
+                } else {
+                    analyser.getByteTimeDomainData(dataArray);
+                    let sum=0;
+                    for (let i=0;i<dataArray.length;i++) {
+                        const v=(dataArray[i]-128)/128; sum+=v*v;
+                    }
+                    const rms=Math.sqrt(sum/dataArray.length);
+                    beatEnergy += (rms-beatEnergy)*0.3;
+                    beatAvg += (beatEnergy-beatAvg)*0.02;
+                    beatCooldown = Math.max(0, beatCooldown-16);
+                    lineEnergy += (rms-lineEnergy)*0.2;
+
+                    if (beatCooldown<=0 && beatEnergy>beatAvg*BEAT_THRESH && beatEnergy>0.08) {
+                        beatCooldown=BEAT_COOLDOWN;
+                    }
+                }
+
+                // 各条线随频率段落独立起伏
+                if (!analyser || audioPlayer.paused) {
+                    for (const L of waveLines) L.targetAmp=0;
+                } else {
+                    const fbuf = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(fbuf);
+                    const B=fbuf.length;
+                    for (let i=0;i<waveLines.length;i++) {
+                        const L=waveLines[i];
+                        // 每条线对应一段频率范围
+                        const lo=Math.floor(i/LINE_COUNT*B*0.8);
+                        const hi=Math.floor((i+1.5)/LINE_COUNT*B*0.8);
+                        let s=0, c=0;
+                        for (let j=lo;j<Math.min(hi,B);j++) { s+=fbuf[j]; c++; }
+                        L.targetAmp = (c>0?s/c/255:0)*1.6 + lineEnergy*1.2;
+                    }
+                }
+
+                // 平滑过渡
+                for (const L of waveLines) {
+                    L.amp += (L.targetAmp-L.amp)*0.15;
+                    L.phase += L.speed*(0.5+L.amp*2);
+                }
+            }
+
+            function drawBgWaves() {
+                const W=rippleCanvas.width, H=rippleCanvas.height;
+                rctx.clearRect(0,0,W,H);
+
+                for (const L of waveLines) {
+                    if (L.amp<0.01) continue;
+                    const yc = L.yBase*H;
+                    const pts = L.points;
+                    const n = pts.length;
+                    const amp = L.amp*H*0.12;
+
+                    // 生成波形采样点
+                    for (let i=0;i<n;i++) {
+                        const t = i/(n-1);
+                        const x = t*W;
+                        const wave1 = Math.sin(t*L.freqScale*8 + L.phase)*amp;
+                        const wave2 = Math.sin(t*L.freqScale*3.5 + L.phase*2.3)*amp*0.5;
+                        const wave3 = Math.sin(t*L.freqScale*15 + L.phase*0.7)*amp*0.25;
+                        pts[i] = yc + wave1 + wave2 + wave3;
+                    }
+
+                    // 画线
+                    rctx.beginPath();
+                    rctx.moveTo(0, pts[0]);
+                    for (let i=1;i<n;i++) {
+                        rctx.lineTo(i/(n-1)*W, pts[i]);
+                    }
+
+                    const alpha = 0.15 + L.amp*0.7;
+                    const hue = (Date.now()*0.01 + L.yBase*80)%360;
+                    rctx.strokeStyle = `hsla(${hue},70%,${40+L.amp*30}%,${alpha.toFixed(3)})`;
+                    rctx.lineWidth = 1 + L.amp*2.5;
+                    rctx.shadowColor = `hsla(${hue},90%,60%,${(alpha*0.5).toFixed(3)})`;
+                    rctx.shadowBlur = 6 + L.amp*10;
+                    rctx.stroke();
+                    rctx.shadowBlur = 0;
+                }
+            }
+
+            // ══════════════════════════════════════
+            //  唱片环绕波形 — 极简示波器环
+            // ══════════════════════════════════════
+            const waveCanvas = document.getElementById('waveCanvas');
+            const wctx = waveCanvas.getContext('2d');
+            const WN = 512;
+            const wBuf = new Float32Array(WN);
+            let tBuf;
+
+            function resizeWave() {
+                const ctn = document.querySelector('.vinyl-container');
+                const r = ctn.getBoundingClientRect();
+                const size = r.width * 1.55;
+                const dpr = window.devicePixelRatio || 1;
+                waveCanvas.width = size * dpr;
+                waveCanvas.height = size * dpr;
+                waveCanvas.style.width = size + 'px';
+                waveCanvas.style.height = size + 'px';
+                const rp = document.querySelector('.right-panel').getBoundingClientRect();
+                waveCanvas.style.left = (r.left + r.width/2 - rp.left) + 'px';
+                waveCanvas.style.top = (r.top + r.height/2 - rp.top) + 'px';
+                waveCanvas.style.transform = 'translate(-50%, -50%)';
+                wR0 = size * 0.34;
+                wAmp = size * 0.10;
+            }
+            let wR0 = 200*0.34, wAmp = 200*0.10;
+            resizeWave();
+            window.addEventListener('resize', resizeWave);
+
+            function updateWave() {
+                if (!analyser || audioPlayer.paused) {
+                    for (let i=0;i<WN;i++) wBuf[i]*=0.88;
+                } else {
+                    if (!tBuf || tBuf.length!==analyser.fftSize) tBuf=new Uint8Array(analyser.fftSize);
+                    analyser.getByteTimeDomainData(tBuf);
+
+                    // 波形环绕映射
+                    const step = tBuf.length/WN;
+                    for (let i=0;i<WN;i++) {
+                        const idx = Math.floor(i*step);
+                        const v = (tBuf[idx]-128)/128;
+                        wBuf[i] += (v - wBuf[i])*0.35;
+                    }
+                }
+            }
+
+            function drawWave() {
+                const dpr = window.devicePixelRatio||1;
+                const cw=waveCanvas.width/dpr, ch=waveCanvas.height/dpr;
+                wctx.clearRect(0,0,waveCanvas.width,waveCanvas.height);
+                wctx.setTransform(dpr,0,0,dpr,0,0);
+                const cx=cw/2, cy=ch/2;
+                const hue = (Date.now()*0.015)%360;
+
+                // 绘制 3 层波形环，从内到外
+                const layers=[
+                    { r:wR0,   a:wAmp*0.7, w:1.2, alpha:0.7 },
+                    { r:wR0+16,a:wAmp*0.9, w:5,   alpha:0.2 },
+                ];
+
+                for (const L of layers) {
+                    if (wBuf.reduce((s,v)=>s+Math.abs(v),0)/WN<0.015) continue;
+
+                    // 构建路径
+                    const pts=[];
+                    for (let i=0;i<=WN;i++) {
+                        const idx=i%WN;
+                        const angle=(i/WN)*Math.PI*2-Math.PI/2;
+                        const r=L.r + wBuf[idx]*L.a;
+                        pts.push({x:cx+Math.cos(angle)*r, y:cy+Math.sin(angle)*r});
+                    }
+
+                    // 辉光层
+                    wctx.beginPath();
+                    wctx.moveTo(pts[0].x, pts[0].y);
+                    for (let i=1;i<pts.length;i++) wctx.lineTo(pts[i].x, pts[i].y);
+                    wctx.strokeStyle=`hsla(${hue},100%,70%,${L.alpha})`;
+                    wctx.lineWidth=L.w;
+                    wctx.shadowColor=`hsla(${hue},100%,65%,0.6)`;
+                    wctx.shadowBlur=16;
+                    wctx.stroke();
+                    wctx.shadowBlur=0;
+                }
+
+                wctx.setTransform(1,0,0,1,0,0);
+            }
+
+            function loop() {
+                updateBgWaves();
+                updateWave();
+                drawBgWaves();
+                drawWave();
+                requestAnimationFrame(loop);
+            }
+            loop();
+
+        })();
+    </script>
+</body>
+</html>

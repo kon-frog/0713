@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回忆 </title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <style>
+        :root {
+            --bg: #fdf8f5; --text: #3d2c1a; --accent: #e8a0a0; --gold: #d4a860;
+            --dark-bg: #1a1412; --dark-text: #e8d5c8;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif;
+            background: var(--bg); color: var(--text);
+            overflow-x: hidden; cursor: auto;
+            transition: background 0.8s,color 0.8s;
+        }
+        body.dark { background: var(--dark-bg); color: var(--dark-text); }
+        body.locked { overflow: hidden; }
+        .cursor-dot { position: fixed; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); transition: width 0.2s,height 0.2s; }
+        .cursor-dot.hover { width: 20px; height: 20px; background: var(--gold); }
+        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #fdf8f5 0%, #f8e8e0 100%); z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; transition: opacity 0.6s; }
+        .loading-screen.hide { opacity: 0; pointer-events: none; }
+        .loading-screen .loader-ring { width: 44px; height: 44px; border: 3px solid #f0e0d8; border-top-color: #e8a0a0; border-right-color: #d4a860; border-radius: 50%; box-shadow: 0 0 20px rgba(232,160,160,0.3); animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-screen .loader-text { font-size: 13px; letter-spacing: 4px; color: #c0a090; animation: loaderFade 1.5s ease-in-out infinite; }
+        @keyframes loaderFade { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+        .top-nav { position: fixed; top: 0; left: 0; width: 100%; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 1000; background: rgba(253,248,245,0.9); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        body.dark .top-nav { background: rgba(26,20,18,0.9); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .top-nav .logo { font-size: 14px; font-weight: 700; letter-spacing: 3px; color: var(--accent); }
+        .top-nav .nav-links { display: flex; gap: 32px; font-size: 11px; letter-spacing: 2px; }
+        .top-nav .nav-links a { color: inherit; text-decoration: none; transition: color 0.3s; }
+        .top-nav .nav-links a:hover { color: var(--accent); }
+        .top-nav .theme-toggle { width: 30px; height: 30px; border: 1.5px solid var(--text); border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .fx-toggle { position: fixed; bottom: 30px; right: 30px; z-index: 1000; width: 40px; height: 40px; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .scroll-stage { position: relative; height: 400vh; }
+        .section { position: sticky; top: 0; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .thumbnail { position: absolute; top: 76px; right: 30px; width: 64px; height: 42px; border-radius: 8px; overflow: hidden; cursor: pointer; z-index: 60; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 3px 12px rgba(0,0,0,0.25); transition: transform 0.3s,border-color 0.3s; background-size: cover; background-position: center; }
+        .thumbnail:hover { transform: scale(1.2); border-color: #fff; }
+        .preview-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; cursor: pointer; }
+        .preview-overlay.show { display: flex; }
+        .preview-overlay img { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+
+        /* 第一屏 */
+        .screen1 { text-align: center; background: url('season/spring.jpg') center/cover no-repeat; cursor: pointer; user-select: none; z-index: 1; position: relative; }
+        .screen1 .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.45); z-index: 0; pointer-events: none; }
+        body.dark .screen1 .bg-overlay { background: rgba(0,0,0,0.45); }
+        .screen1 .inner { position: relative; z-index: 1; }
+        .screen1 .birthday-text { font-size: 48px; font-weight: 300; letter-spacing: 8px; opacity: 0; transform: translateY(20px); transition: all 0.6s ease; color: #3d2c1a; text-shadow: 0 2px 8px rgba(255,255,255,0.6); }
+        .screen1 .birthday-text.show { opacity: 1; transform: translateY(0); }
+        .screen1 .sub-text { font-size: 13px; letter-spacing: 3px; color: var(--accent); margin-top: 16px; opacity: 0; transform: translateY(10px); transition: all 0.6s ease 0.15s; text-shadow: 0 1px 4px rgba(255,255,255,0.6); }
+        .screen1 .sub-text.show { opacity: 1; transform: translateY(0); }
+        .screen1 .typewriter { font-size: 13px; letter-spacing: 2px; color: #6a5a4a; margin-top: 20px; min-height: 20px; }
+        .screen1 .click-hint { font-size: 11px; color: #999; letter-spacing: 2px; margin-top: 30px; opacity: 0; transition: opacity 0.5s; }
+        .screen1 .click-hint.show { opacity: 1; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+        #particlesCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+
+        /* 第二屏 */
+        .screen2 { flex-direction: column; background: url('season/summer.jpg') center/cover no-repeat; z-index: 2; position: relative; }
+        .screen2 .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.4); z-index: 0; pointer-events: none; }
+        body.dark .screen2 .bg-overlay { background: rgba(0,0,0,0.4); }
+        .screen2 .label { position: absolute; bottom: 40px; left: 40px; font-size: 16px; font-weight: 300; letter-spacing: 3px; color: #fff; z-index: 2; opacity: 0; transition: opacity 0.8s; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .screen2 .label.show { opacity: 1; }
+        .pin-board { position: relative; z-index: 1; width: 95%; max-width: 1100px; height: 82%; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 20px 24px; padding: 20px 30px; overflow-y: auto; }
+        .polaroid { background: #fff; padding: 9px 9px 30px 9px; border-radius: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.4s,box-shadow 0.4s,opacity 0.6s; position: relative; opacity: 0; transform: translateY(30px) scale(0.8); width: 150px; flex-shrink: 0; }
+        .polaroid.visible { opacity: 1; transform: translateY(0) scale(1); }
+        .polaroid:hover { transform: scale(1.12) rotate(0deg) !important; z-index: 50; box-shadow: 0 12px 35px rgba(0,0,0,0.3); }
+        .polaroid:nth-child(odd) { transform: translateY(30px) scale(0.8) rotate(-3deg); }
+        .polaroid:nth-child(even) { transform: translateY(30px) scale(0.8) rotate(2deg); }
+        .polaroid.visible:nth-child(odd) { transform: translateY(0) scale(1) rotate(-3deg); }
+        .polaroid.visible:nth-child(even) { transform: translateY(0) scale(1) rotate(2deg); }
+        .polaroid .photo { width: 132px; height: 172px; background: #f5e8e8; overflow: hidden; border-radius: 2px; }
+        .polaroid .photo img { width: 100%; height: 100%; object-fit: cover; }
+        .polaroid .pin { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: radial-gradient(circle at 40% 40%,#ff8888,#cc3333); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 5; }
+        .polaroid .pin::after { content: ''; position: absolute; top: 3px; left: 3px; width: 5px; height: 5px; background: rgba(255,255,255,0.6); border-radius: 50%; }
+        .polaroid .tape { position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(-2deg); width: 40px; height: 16px; background: rgba(255,220,180,0.7); border-radius: 2px; z-index: 4; }
+        .polaroid .caption { text-align: center; font-size: 10px; color: #999; letter-spacing: 1px; margin-top: 7px; }
+
+        /* 第三屏 - 贪吃蛇 */
+        .screen3 {
+            background: url('season/autumn.jpg') center/cover no-repeat;
+            z-index: 3; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 10px;
+        }
+        .screen3 .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(245,240,232,0.4); z-index: 0; pointer-events: none; }
+        body.dark .screen3 .bg-overlay { background: rgba(20,16,12,0.4); }
+        .screen3 .game-box {
+            position: relative; z-index: 1;
+            border: 3px solid #d44a5e;
+            border-radius: 8px;
+            box-shadow:
+                0 0 30px rgba(212,74,94,0.2),
+                0 0 80px rgba(212,74,94,0.1),
+                inset 0 0 20px rgba(212,74,94,0.05);
+            background: rgba(255,255,255,0.3);
+        }
+        .screen3 .game-box canvas { display: block; }
+        .screen3 .game-bar {
+            display: flex; align-items: center; gap: 10px;
+            position: relative; z-index: 1;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px; border-radius: 22px;
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+        body.dark .screen3 .game-bar { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.08); }
+        .screen3 .game-bar select { padding: 7px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 16px; font-size: 12px; outline: none; background: rgba(255,255,255,0.8); font-family: inherit; cursor: pointer; color: #4a3720; }
+        body.dark .screen3 .game-bar select { background: rgba(0,0,0,0.5); color: #e8d5c8; border-color: rgba(255,255,255,0.1); }
+        .screen3 .game-bar .btn { padding: 8px 20px; background: #4a3720; color: #fff; border: none; border-radius: 18px; font-size: 13px; font-weight: 600; letter-spacing: 2px; cursor: pointer; transition: all 0.3s; }
+        .screen3 .game-bar .btn:hover { background: #6a4f2e; }
+        .screen3 .score-tag { font-size: 14px; font-weight: 700; letter-spacing: 2px; color: #4a3720; position: relative; z-index: 1; background: rgba(255,255,255,0.6); backdrop-filter: blur(4px); padding: 4px 14px; border-radius: 14px; }
+        body.dark .screen3 .score-tag { color: #e8d5c8; background: rgba(0,0,0,0.5); }
+        .screen3 .tip-text { font-size: 11px; color: #999; letter-spacing: 1px; position: relative; z-index: 1; }
+
+        /* 页面过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fdf8f5; z-index: 99999;
+            animation: pageIn 0.5s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        .page-transition.out {
+            animation: pageOut 0.4s cubic-bezier(0.23,1,0.32,1) forwards;
+        }
+        @keyframes pageIn { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes pageOut { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+        /* 第四屏 */
+        .screen4 { text-align: center; background: url('season/winter.jpg') center/cover no-repeat; overflow: hidden; z-index: 4; position: relative; }
+        .screen4 .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.45); z-index: 0; pointer-events: none; }
+        body.dark .screen4 .bg-overlay { background: rgba(0,0,0,0.45); }
+        .screen4 .blessing-wrap { position: relative; z-index: 1; }
+        .screen4 .blessing-line { font-size: 20px; font-weight: 300; letter-spacing: 3px; margin: 8px 0; color: #3d2c1a; }
+        .screen4 .signature { margin-top: 24px; font-size: 16px; font-weight: 700; color: #3d2c1a; letter-spacing: 2px; }
+        .screen4 .countdown-wrap { margin-top: 20px; position: relative; z-index: 1; }
+        .screen4 .countdown-btn { display: inline-block; padding: 12px 28px; border: 1.5px solid var(--accent); background: rgba(255,255,255,0.6); border-radius: 25px; cursor: pointer; font-size: 13px; letter-spacing: 2px; color: #3d2c1a; transition: all 0.3s; }
+        .screen4 .countdown-btn:hover { background: var(--accent); color: #fff; }
+
+        .blessing-leaf { position: absolute; pointer-events: none; z-index: 5; font-weight: 400; white-space: nowrap; opacity: 0; color: var(--color); font-family: var(--font); text-shadow: 0 1px 3px rgba(255,255,255,0.5); top: -10vh; left: var(--left); font-size: var(--size); transform: skewX(var(--skew)) rotate(var(--tilt)); animation: none; }
+        .blessing-leaf.falling { animation: leafFall var(--dur) linear forwards; }
+        @keyframes leafFall { 0%{transform:skewX(var(--skew)) rotate(var(--tilt)) translateY(0);opacity:0;} 3%{opacity:0.8;} 95%{opacity:0.6;} 100%{transform:skewX(var(--skew)) rotate(var(--tilt)) translateY(var(--stop-y));opacity:0.45;} }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: rgba(255,255,255,0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 20px; padding: 24px; max-width: 460px; max-height: 75vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+        .modal-content img { width: 100%; border-radius: 8px; margin-bottom: 12px; }
+        .modal-content .mem-date { font-size: 11px; color: var(--accent); letter-spacing: 2px; margin-bottom: 6px; }
+        .modal-content .mem-text { font-size: 13px; line-height: 1.8; color: #5a4a3a; margin-bottom: 10px; }
+        .modal-content .mem-dedication { font-size: 11px; color: #b0a090; font-style: italic; text-align: right; }
+        .modal-content .close-btn { display: block; margin: 12px auto 0; padding: 8px 20px; background: #eee; border: none; border-radius: 20px; cursor: pointer; }
+        .music-fab { position: fixed; bottom: 30px; left: 30px; width: 46px; height: 46px; background: rgba(200,150,150,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(200,150,150,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; z-index: 100; color: var(--accent); text-decoration: none; }
+        .music-fab:hover { transform: scale(1.1); }
+
+        @media (max-width: 768px) {
+            .screen1 .birthday-text { font-size: 28px; letter-spacing: 4px; }
+            .polaroid { width: 110px; padding: 7px 7px 22px 7px; }
+            .polaroid .photo { width: 96px; height: 128px; }
+            .pin-board { gap: 14px 16px; padding: 15px; }
+            .screen4 .blessing-line { font-size: 16px; }
+            .screen3 .game-bar { gap: 6px; padding: 6px 10px; }
+            .screen3 .game-bar select { padding: 5px 8px; font-size: 11px; }
+            .screen3 .game-bar .btn { padding: 6px 12px; font-size: 11px; }
+            .thumbnail { width: 44px; height: 30px; top: 68px; right: 12px; }
+            .top-nav { padding: 0 12px; }
+            .top-nav .nav-links { gap: 14px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-transition"></div>
+
+    <div class="loading-screen" id="loadingScreen"><div class="loader-ring"></div><div class="loader-text">正在加载中...</div></div>
+    <div class="cursor-dot" id="cursorDot"></div>
+    <canvas id="particlesCanvas"></canvas>
+    <div class="preview-overlay" id="previewOverlay" onclick="this.classList.remove('show')"><img id="previewImg" src="" alt=""></div>
+
+    <div class="top-nav">
+        <div class="logo">◈ MEMORY</div>
+        <div class="nav-links"><a href="home.html" onclick="event.preventDefault();goTo('home.html')">HOME</a><a href="memory.html" style="color:var(--accent);">回忆</a><a href="blessing.html" onclick="event.preventDefault();goTo('blessing.html')">祝福</a></div>
+        <div class="theme-toggle" onclick="toggleTheme()">◐</div>
+    </div>
+    <div class="fx-toggle" onclick="toggleFX()" id="fxToggle">✨</div>
+
+    <div class="scroll-stage" id="scrollStage">
+        <div class="section screen1" id="screen1">
+            <div class="bg-overlay"></div>
+            <div class="thumbnail" style="background-image:url('season/spring.jpg')" onclick="event.stopPropagation();previewImage('season/spring.jpg')"></div>
+            <div class="inner">
+                <div class="birthday-text" id="bdText">Happy Birthday 致王小二</div>
+                <div class="sub-text" id="subText">我们初次聊天于 2023.12.1</div>
+                <div class="typewriter" id="typewriter"></div>
+                <div class="click-hint" id="clickHint">— 点击屏幕继续 —</div>
+            </div>
+        </div>
+
+        <div class="section screen2" id="screen2">
+            <div class="bg-overlay"></div>
+            <div class="thumbnail" style="background-image:url('season/summer.jpg')" onclick="event.stopPropagation();previewImage('season/summer.jpg')"></div>
+            <div class="label" id="label2">美好的时光</div>
+            <div class="pin-board" id="pinBoard"></div>
+        </div>
+
+        <div class="section screen3">
+            <div class="bg-overlay"></div>
+            <div class="thumbnail" style="background-image:url('season/autumn.jpg')" onclick="event.stopPropagation();previewImage('season/autumn.jpg')"></div>
+            <div class="score-tag">得分 <span id="scoreDisplay">0</span></div>
+            <div class="game-box"><canvas id="snakeCanvas"></canvas></div>
+            <div class="game-bar">
+                <select id="speedSelect"><option value="140">慢速</option><option value="90" selected>正常</option><option value="55">快速</option></select>
+                <select id="difficultySelect"><option value="8">简单</option><option value="18" selected>中等</option><option value="30">困难</option></select>
+                <button class="btn" id="startBtn" onclick="startSnake()">开始</button>
+            </div>
+            <div class="tip-text">WASD / 方向键 | 碰红框或🐷即死 | 吃❤️</div>
+        </div>
+
+        <div class="section screen4" id="screen4">
+            <div class="bg-overlay"></div>
+            <div class="thumbnail" style="background-image:url('season/winter.jpg')" onclick="event.stopPropagation();previewImage('season/winter.jpg')"></div>
+            <div class="blessing-wrap">
+                <div class="blessing-line">我终于在此</div>
+                <div class="blessing-line">祝福忘记你永远开心快乐心想事成</div>
+                <div class="signature">ദ്ദി˶ｰ̀֊ｰ́ )✧</div>
+                <div class="countdown-wrap"><button class="countdown-btn" id="countdownBtn" onclick="showCountdown()">生日倒计时</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay"><div class="modal-content" id="modalContent"></div></div>
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script>
+        function toggleTheme(){document.body.classList.toggle('dark');}
+        function goTo(page){
+            document.querySelector('.page-transition').classList.add('out');
+            setTimeout(() => { window.location.href = page; }, 400);
+        }
+        function previewImage(src){document.getElementById('previewImg').src=src;document.getElementById('previewOverlay').classList.add('show');}
+        let fxOn=true;
+        function toggleFX(){fxOn=!fxOn;document.getElementById('fxToggle').textContent=fxOn?'✨':'◌';document.getElementById('particlesCanvas').style.display=fxOn?'block':'none';}
+
+        const canvasP=document.getElementById('particlesCanvas');const ctxP=canvasP.getContext('2d');let particles=[],balloons=[];
+        function resizeCanvasP(){canvasP.width=window.innerWidth;canvasP.height=window.innerHeight;}resizeCanvasP();window.addEventListener('resize',resizeCanvasP);
+        class Particle{constructor(){this.reset();}reset(){this.x=Math.random()*canvasP.width;this.y=canvasP.height+10;this.size=Math.random()*2+0.5;this.speed=Math.random()*0.5+0.2;this.opacity=Math.random()*0.5+0.3;this.wind=Math.random()*0.3-0.15;}update(){this.y-=this.speed;this.x+=this.wind;if(this.y<-10)this.reset();}draw(){ctxP.beginPath();ctxP.arc(this.x,this.y,this.size,0,Math.PI*2);ctxP.fillStyle=this.color||`rgba(255,200,200,${this.opacity})`;ctxP.fill();}}
+        class Balloon{constructor(){this.reset();}reset(){this.x=Math.random()*canvasP.width;this.y=canvasP.height+40;this.size=Math.random()*15+10;this.speed=Math.random()*0.8+0.4;this.wind=Math.random()*0.5-0.25;this.color=`hsl(${Math.random()*20+345},50%,80%)`;}update(){this.y-=this.speed;this.x+=this.wind;if(this.y<-60)this.reset();}draw(){ctxP.beginPath();ctxP.ellipse(this.x,this.y,this.size,this.size*1.3,0,0,Math.PI*2);ctxP.fillStyle=this.color;ctxP.fill();ctxP.beginPath();ctxP.moveTo(this.x,this.y+this.size*1.3);ctxP.lineTo(this.x-3,this.y+this.size*1.3+15);ctxP.strokeStyle='#ccc';ctxP.lineWidth=0.5;ctxP.stroke();}}
+        for(let i=0;i<50;i++)particles.push(new Particle());for(let i=0;i<10;i++)balloons.push(new Balloon());
+        function animateParticles(){if(!fxOn){requestAnimationFrame(animateParticles);return;}ctxP.clearRect(0,0,canvasP.width,canvasP.height);particles.forEach(p=>{p.update();p.draw();});balloons.forEach(b=>{b.update();b.draw();});requestAnimationFrame(animateParticles);}animateParticles();
+
+        const cnFonts=["'STFangsong','FangSong',serif","'STKaiti','KaiTi',serif","'STXingkai','Xingkai SC',cursive","'STLiti','LiSu',serif","'STHupo','HUPO',cursive","'Weibei SC',serif","'ZCOOL KuaiLe',cursive","'Ma Shan Zheng',cursive","'Noto Serif SC',serif","'Long Cang',cursive"];
+        const cnTexts=['生日快乐','万事顺遂','平安喜乐','天天开心','心想事成','幸福美满','岁岁平安','无忧无虑','自由自在','光芒万丈','温柔坚定','闪闪发光','所愿皆成','前程似锦','未来可期','永远年轻','被世界温柔以待','所有梦想都实现','幸运常伴','美好如初','繁花似锦','星河长明','岁月静好','笑口常开','福气满满','好运连连','青春永驻','美丽动人','健康平安','财源滚滚','步步高升','学业有成','工作顺利','爱情甜蜜','家庭幸福','友谊长存','万事如意','锦鲤附体','暴富暴美','心想事橙','柿柿如意','莓有烦恼','桃你欢心'];
+        const intlTexts=['Happy Birthday','Bon Anniversaire','Feliz Cumpleaños','Buon Compleanno','Alles Gute','생일 축하해','お誕生日おめでとう','С днём рождения','Grattis på födelsedagen','Hartelijk gefeliciteerd','Tillykke med fødselsdagen','Joyeux Anniversaire','Frohe Geburtstag','Gratulerer med dagen','Feliz Aniversário','Chúc mừng sinh nhật','สุขสันต์วันเกิด','Maligayang kaarawan','Selamat ulang tahun'];
+        const allBlessings=[];for(let i=0;i<80;i++){if(i<40)allBlessings.push({text:cnTexts[i%cnTexts.length],font:cnFonts[i%cnFonts.length]});else allBlessings.push({text:intlTexts[(i-40)%intlTexts.length],font:"'Georgia','Times New Roman',serif"});}
+        for(let i=allBlessings.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[allBlessings[i],allBlessings[j]]=[allBlessings[j],allBlessings[i]];}
+        const leafColors=['#e8a0a0','#d4a860','#c9a0c0','#a0c8d4','#c0b0a0','#d4a0a0','#b8c8a8','#c8b8a8','#e8c0a0','#a0c0c8','#c8a0c8','#a8c0a8'];const leafElements=[];
+        function createBlessingLeaves(){const s4=document.getElementById('screen4');const screenH=s4.offsetHeight;const stopBase=screenH*0.9;allBlessings.forEach((item,i)=>{const leaf=document.createElement('div');leaf.className='blessing-leaf';leaf.textContent=item.text;leaf.style.setProperty('--font',item.font);leaf.style.setProperty('--color',leafColors[i%leafColors.length]);leaf.style.setProperty('--dur',(Math.random()*6+8)+'s');leaf.style.setProperty('--stop-y',(stopBase-Math.random()*(screenH*0.08))+'px');leaf.style.setProperty('--left',(Math.random()*84+8)+'%');leaf.style.setProperty('--size',(Math.random()*7+13)+'px');leaf.style.setProperty('--skew',(Math.random()*50-25)+'deg');leaf.style.setProperty('--tilt',(Math.random()*10-5)+'deg');s4.appendChild(leaf);leafElements.push(leaf);});}createBlessingLeaves();
+        let leavesStarted=false;function startLeaves(){if(leavesStarted)return;leavesStarted=true;leafElements.forEach((leaf,i)=>{setTimeout(()=>{leaf.classList.add('falling');},i*35);});}
+
+        const memories=[{file:'l1.jpg',date:'2023.12.1',text:'第一次聊天（抱歉是真的，略过略过）',to:'致真诚的王小二'},{file:'l2.jpg',date:'2023.12.2',text:'wx上第一次聊天，回看发现居然是ive的经典动作哈哈',to:'致专一热爱的王小二'},{file:'l3.jpg',date:'2023.12.6',text:'这首歌是我最喜欢的你推荐的歌，那时候秋天还蛮应景的',to:'致音乐品味卓绝的王小二'},{file:'l4.jpg',date:'2023.12.19',text:'第一次收到你的生日祝福很激动（甚至卡点）隔了不止207天了哈哈 感觉那时候好像不太会说话',to:'致细心的王小二'},{file:'l5.jpg',date:'2023.12.19',text:'第一次收到你的生日礼物嘿嘿，糖忘吃了不过已经很甜了',to:'致带给人幸福的王小二'},{file:'l6.jpg',date:'2024.1.3',text:'想起好像那时候你听一会就要看个广告才能畅听几分钟，而且从那时候就专家会诊了说是',to:'致毫不浪费的王小二'},{file:'l7.jpg',date:'2024.1.4',text:'现在看感觉每个人怎么看书中的人物和自己的性格有关，你就是那样独立和自己思考的人吧',to:'致爱思考的王小二'},{file:'l8.jpg',date:'2024.1.26',text:'得知你要学韩语，现在才回过味来是想和liz在一起吧嘿嘿',to:'致追爱的王小二'},{file:'l9.jpg',date:'2024.2.6',text:'至今未等到的大明星王小二女士参演的信条的上映，快上映啊！',to:'致多才多艺的大明星王小二'},{file:'l10.jpg',date:'2024.2.10',text:'聊天后的第一次过年刚好下雪ദ്ദി˶˃ ᵕ ˂ )✧',to:'致24年的new王小二女士'},{file:'l11.jpg',date:'2024.4.13',text:'印象深刻的一条信息，其实王小二也是小孩子来的吧',to:'致赤子之心的王小小小小二'},{file:'l12.jpg',date:'2024.4.28',text:'也是印象深刻，在杭州遇到这种事实在是不好的回忆，但敢于明确拒绝已经很厉害了！',to:'致勇敢的王大二'},{file:'l20.jpg',date:'2024.5.3',text:'这个时候我在山上睡着了💤，很难得的睡这么早没回你消息，其实是缺氧晕乎乎的睡着了',to:'致collll神 王小二'},{file:'l13.jpg',date:'2024.6.1',text:'毛估估是夭折了，人欲战而机先投',to:'致电脑高达256g内存的王小二'},{file:'l25.jpg',date:'2024.6.2',text:'你说你跟我说之前已经大哭过一场我就觉得这世间还是值得令人有善意的',to:'致非常非常非常善良的王小二'},{file:'l14.jpg',date:'2024.7.13',text:'第一次祝你过生日快乐，但不知道为什么没怎么找你聊，真的必须特别狠狠反省',to:'致大度的王小二'},{file:'l15.jpg',date:'2024.7.15',text:'那一天你好久没回我信息我还以为你是有事不好意思问然后得到这个消息如遭雷击，不过还好蛮幸运的',to:'致幸运的王小二'},{file:'l16.jpg',date:'2025.11.25',text:'这里是去年突然聊起来了因为ive，时也命也吧哈哈，想着试试然后又成朋友了真挺好的，芙气冲天',to:'致珍贵的王小二'},{file:'l17.jpg',date:'2026.2.15',text:'难得早起，现在的王小二会怀念那天的自己吗…',to:'致珍贵早起的王小二'},{file:'l18.jpg',date:'2026.3.29',text:'即将被拉入洛克王国坑的王小二，那时好像还没现在这样的热情',to:'致未来的大魔法师王小二'},{file:'l21.jpg',date:'2026.4.19',text:'在洛克王国世界里美美拍照，那时候是异色库库出的时光嘿嘿，美美出片',to:'致最会拍照的王小二'},{file:'l22.jpg',date:'2026.5.20',text:'王小二第一次上大师，在pvp博弈的路上一去不复返了',to:'致勤奋的王小二'},{file:'l23.jpg',date:'2026.5.21',text:'我对我的礼物还蛮不自信的谢谢你鼓励我嘿嘿，太温暖了',to:'致好好夸人的王小二'},{file:'l19.jpg',date:'2026.5.26',text:'熬的最晚的一次，你有没有见过凌晨五点的钱塘江？也谢谢你的安慰了',to:'致暖心的王小二'},{file:'l24.jpg',date:'2026.6.14',text:'不多说了王之二',to:'致马甲遍地的的王小二（存疑'}];
+
+        const loadingScreen=document.getElementById('loadingScreen');const twEl=document.getElementById('typewriter');const msg='正在翻开我们的回忆簿...';let ci=0,step=0;
+        function typeWriter(){if(ci<msg.length){twEl.textContent+=msg.charAt(ci);ci++;setTimeout(typeWriter,20);}else{step=1;document.getElementById('bdText').classList.add('show');setTimeout(()=>{step=2;document.getElementById('subText').classList.add('show');setTimeout(()=>{step=3;document.getElementById('clickHint').classList.add('show');},500);},350);}}
+        setTimeout(()=>{loadingScreen.classList.add('hide');typeWriter();setTimeout(()=>{if(loadingScreen.parentNode)loadingScreen.remove();},600);},2500);
+
+        // 锁定滚动，点击后解锁
+        document.body.classList.add('locked');
+        document.getElementById('screen1').addEventListener('click',function(){
+            if(step<3||this.dataset.done)return;
+            this.dataset.done='1';
+            document.getElementById('clickHint').classList.remove('show');
+            this.style.cursor='default';
+            document.body.classList.remove('locked');
+            document.getElementById('screen2').scrollIntoView({behavior:'smooth'});
+            revealPolaroids();
+        });
+
+        function createPolaroids(){const board=document.getElementById('pinBoard');const polaroids=[];memories.forEach((mem,i)=>{const src=`ltjl/${mem.file}`;const div=document.createElement('div');div.className='polaroid';div.innerHTML=`<div class="pin"></div><div class="tape"></div><div class="photo"><span style="display:flex;align-items:center;justify-content:center;height:100%;color:#c09090;font-size:11px;">${mem.date}</span></div><div class="caption">${mem.date}</div>`;const img=new Image();img.src=src;img.onload=function(){div.querySelector('.photo').innerHTML=`<img src="${src}" alt="">`;};div.addEventListener('click',()=>showMemory(i));board.appendChild(div);polaroids.push(div);});return polaroids;}
+        const polaroids=createPolaroids();function revealPolaroids(){document.getElementById('label2').classList.add('show');polaroids.forEach((p,i)=>{setTimeout(()=>{p.classList.add('visible');},i*260);});}
+        function showMemory(index){const mem=memories[index];const ov=document.getElementById('modalOverlay');document.getElementById('modalContent').innerHTML=`<img src="ltjl/${mem.file}" alt="" onerror="this.style.display='none';"><div class="mem-date">${mem.date}</div><div class="mem-text">${mem.text}</div><div class="mem-dedication">${mem.to}</div><button class="close-btn" onclick="document.getElementById('modalOverlay').classList.remove('show')">关闭</button>`;ov.classList.add('show');}
+        document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)this.classList.remove('show');});
+
+        gsap.registerPlugin(ScrollTrigger);
+        ScrollTrigger.create({trigger:'#screen4',start:'top 60%',onEnter:startLeaves,once:true});
+        document.querySelectorAll('.blessing-line').forEach((line,i)=>{gsap.fromTo(line,{opacity:0,y:20},{scrollTrigger:{trigger:'#screen4',start:`top ${85-i*12}%`,end:`top ${40-i*12}%`,scrub:0.5},opacity:1,y:0,duration:0.5});});
+        gsap.fromTo('.signature',{opacity:0},{scrollTrigger:{trigger:'#screen4',start:'top 40%',end:'top 20%',scrub:0.5},opacity:1,duration:0.5});
+        gsap.fromTo('.countdown-wrap',{opacity:0,y:20},{scrollTrigger:{trigger:'#screen4',start:'top 30%',end:'top 15%',scrub:0.5},opacity:1,y:0,duration:0.5});
+
+        function getDaysUntilNextJuly13(){const now=new Date();const target=new Date(now.getFullYear(),6,13);if(now>target)target.setFullYear(target.getFullYear()+1);return Math.ceil((target-now)/(1000*60*60*24));}
+        function showCountdown(){alert(`距离下一个7月13日还有 ${getDaysUntilNextJuly13()} 天`);}
+        document.getElementById('countdownBtn').textContent=`生日倒计时 ${getDaysUntilNextJuly13()}天`;
+
+        // ===== 贪吃蛇（完全重写）=====
+        const snakeCanvas = document.getElementById('snakeCanvas');
+        const sctx = snakeCanvas.getContext('2d');
+        const CELL = 30;
+        let gw, gh;
+        let snake, foods, pigs, vx, vy, score, playing, loop;
+
+        function resizeGame(){
+            snakeCanvas.width  = Math.floor(window.innerWidth * 0.78);
+            snakeCanvas.height = Math.floor(window.innerHeight * 0.78);
+            gw = Math.floor(snakeCanvas.width / CELL);
+            gh = Math.floor(snakeCanvas.height / CELL);
+        }
+
+        function rp(){ return {x:Math.floor(Math.random()*gw), y:Math.floor(Math.random()*gh)}; }
+
+        function hit(p, arr){ return arr.some(a=>a.x===p.x&&a.y===p.y); }
+
+        function newFoods(n){
+            const f=[];
+            for(let i=0;i<n;i++){
+                let p,t=0;
+                do{p=rp();t++;}while((hit(p,snake)||hit(p,f)||hit(p,pigs))&&t<500);
+                if(t<500)f.push(p);
+            }
+            return f;
+        }
+
+        function newPigs(n){
+            const o=[];
+            for(let i=0;i<n;i++){
+                let p,t=0;
+                do{p=rp();t++;}while((Math.abs(p.x-8)<6&&Math.abs(p.y-8)<6)||hit(p,o)&&t<300);
+                if(t<300)o.push(p);
+            }
+            return o;
+        }
+
+        function drawGame(){
+            sctx.clearRect(0,0,snakeCanvas.width,snakeCanvas.height);
+            const s=CELL-4;
+            sctx.font=s+'px sans-serif';sctx.textAlign='center';sctx.textBaseline='middle';
+            foods.forEach(f=>sctx.fillText('❤️',f.x*CELL+CELL/2,f.y*CELL+CELL/2));
+            pigs.forEach(o=>sctx.fillText('🐷',o.x*CELL+CELL/2,o.y*CELL+CELL/2));
+            snake.forEach(b=>sctx.fillText('🎂',b.x*CELL+CELL/2,b.y*CELL+CELL/2));
+        }
+
+        function tick(){
+            const h={x:snake[0].x+vx, y:snake[0].y+vy};
+            if(h.x<0||h.x>=gw||h.y<0||h.y>=gh) return die();
+            if(hit(h,snake)) return die();
+            if(hit(h,pigs)) return die();
+            snake.unshift(h);
+            const ei=foods.findIndex(f=>f.x===h.x&&f.y===h.y);
+            if(ei>=0){score+=10;document.getElementById('scoreDisplay').textContent=score;foods[ei]=rp();while(hit(foods[ei],snake)||hit(foods[ei],pigs))foods[ei]=rp();}
+            else snake.pop();
+            drawGame();
+        }
+
+        function die(){
+            clearInterval(loop);playing=false;
+            document.getElementById('startBtn').textContent='开始';
+            sctx.fillStyle='rgba(0,0,0,0.6)';sctx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+            sctx.fillStyle='#fff';sctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';sctx.textAlign='center';
+            sctx.fillText('游戏结束  得分:'+score,snakeCanvas.width/2,snakeCanvas.height/2);
+        }
+
+        function startSnake(){
+            resizeGame();
+            if(loop)clearInterval(loop);
+            snake=[{x:Math.floor(gw/4),y:Math.floor(gh/2)}];
+            vx=1;vy=0;score=0;
+            document.getElementById('scoreDisplay').textContent='0';
+            const spd=parseInt(document.getElementById('speedSelect').value);
+            const pigN=parseInt(document.getElementById('difficultySelect').value);
+            pigs=newPigs(pigN);
+            foods=newFoods(4);
+            playing=true;
+            document.getElementById('startBtn').textContent='游戏中';
+            drawGame();
+            loop=setInterval(tick,spd);
+        }
+
+        document.addEventListener('keydown',e=>{
+            if(!playing)return;
+            const k=e.key.toLowerCase();
+            if((k==='arrowup'||k==='w')&&vy!==1){vx=0;vy=-1;e.preventDefault();}
+            if((k==='arrowdown'||k==='s')&&vy!==-1){vx=0;vy=1;e.preventDefault();}
+            if((k==='arrowleft'||k==='a')&&vx!==1){vx=-1;vy=0;e.preventDefault();}
+            if((k==='arrowright'||k==='d')&&vx!==-1){vx=1;vy=0;e.preventDefault();}
+        });
+
+        window.addEventListener('resize',()=>{if(!playing){resizeGame();snake=[{x:Math.floor(gw/4),y:Math.floor(gh/2)}];pigs=newPigs(18);foods=newFoods(4);drawGame();}});
+
+        // 初始预览
+        resizeGame();
+        snake=[{x:Math.floor(gw/4),y:Math.floor(gh/2)}];
+        pigs=newPigs(18);
+        foods=newFoods(4);
+        drawGame();
+
+        const cd=document.getElementById('cursorDot');
+        document.addEventListener('mousemove',e=>{cd.style.left=e.clientX+'px';cd.style.top=e.clientY+'px';});
+        document.querySelectorAll('a,button,.polaroid,.theme-toggle,.fx-toggle,.thumbnail').forEach(el=>{el.addEventListener('mouseenter',()=>cd.classList.add('hover'));el.addEventListener('mouseleave',()=>cd.classList.remove('hover'));});
+    </script>
+
+    <iframe src="bgm.html" style="display:none;"></iframe>
+    <script>document.addEventListener('click',()=>{const f=document.querySelector('iframe[src="bgm.html"]');if(f&&f.contentWindow)f.contentWindow.postMessage({action:'play'},'*');},{once:true});</script>
+</body>
+</html>

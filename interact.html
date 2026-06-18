@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>冒险 </title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a14;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
+canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;max-width:100vw;max-height:100vh;border-radius:2px}
+#ui{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;color:#fff;font-size:13px;letter-spacing:2px;opacity:.7;pointer-events:none}
+.back-link{position:fixed;top:14px;left:20px;z-index:10;padding:6px 14px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:16px;color:#aaa;text-decoration:none;font-size:11px;letter-spacing:2px;transition:all .3s}
+.back-link:hover{color:#fff;border-color:rgba(255,255,255,.4)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<a href="home.html" class="back-link">← 返回</a>
+<div id="ui"></div>
+
+<script>
+(function(){
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const UI=document.getElementById('ui');
+
+// 内部分辨率 — 离屏 canvas
+const IW=480, IH=270;
+const off=document.createElement('canvas'); off.width=IW; off.height=IH;
+const g=off.getContext('2d'); g.imageSmoothingEnabled=false;
+
+function resizeCanvas(){
+    const s=Math.max(1,Math.min(Math.floor(window.innerWidth/IW),Math.floor(window.innerHeight/IH)));
+    canvas.width=IW*s; canvas.height=IH*s;
+    ctx.imageSmoothingEnabled=false;
+}
+resizeCanvas();
+
+// ==================== 输入 ====================
+const keys={};
+window.addEventListener('keydown',e=>{keys[e.key]=true;e.preventDefault()});
+window.addEventListener('keyup',e=>{keys[e.key]=false});
+
+// 移动端按钮
+let touchLeft=false,touchRight=false,touchJump=false;
+canvas.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    for(const t of e.touches){
+        const rx=t.clientX/window.innerWidth, ry=t.clientY/window.innerHeight;
+        if(ry>0.55){if(rx<0.3)touchLeft=true;else if(rx>0.7)touchRight=true;else touchJump=true}
+        else{touchJump=true}
+    }
+},{passive:false});
+canvas.addEventListener('touchend',e=>{touchLeft=touchRight=touchJump=false;e.preventDefault()});
+canvas.addEventListener('touchcancel',()=>{touchLeft=touchRight=touchJump=false});
+
+function inputLeft(){return keys['ArrowLeft']||keys['a']||keys['A']||touchLeft}
+function inputRight(){return keys['ArrowRight']||keys['d']||keys['D']||touchRight}
+function inputJump(){return keys['ArrowUp']||keys['w']||keys['W']||keys[' ']||touchJump}
+
+// ==================== 音效 ====================
+let actx;
+function beep(f,d,vol=.06){
+    try{
+        if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();
+        const o=actx.createOscillator(),g=actx.createGain();
+        o.type='square';o.frequency.value=f;g.gain.setValueAtTime(vol,actx.currentTime);
+        g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);
+        o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);
+    }catch(e){}
+}
+function sfxJump(){beep(300,.1,.06);beep(500,.08,.04)}
+function sfxCoin(){beep(880,.06,.04);beep(1100,.08,.03)}
+function sfxHit(){beep(100,.15,.07);beep(60,.2,.05)}
+function sfxWin(){beep(523,.1,.06);setTimeout(()=>beep(659,.1,.06),120);setTimeout(()=>beep(784,.1,.06),240);setTimeout(()=>beep(1047,.2,.08),360)}
+
+// ==================== 精灵绘制 ====================
+function px(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.floor(x),Math.floor(y),w,h)}
+
+// 女孩 — 黑发侧面
+function drawGirl(gx,gy,frame,dir){
+    var moving=Math.abs(player.vx)>.1, f=moving?Math.floor(frame/8)%2:0, bb=f?-1:0;
+    g.save();
+    if(dir<0){g.translate(gx+4,0);g.scale(-1,1);g.translate(-gx-4,0)}
+    function P(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.floor(gx+x),Math.floor(gy+y+bb),Math.ceil(w),Math.ceil(h))}
+    // 影子
+    g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(gx+4,gy+17,4,1,0,0,Math.PI*2);g.fill();
+    // 后腿+白鞋
+    if(f===0){P(1,12,1,3,'#fdd8b0');P(1,15,2,1,'#fff')}else{P(2,12,1,2,'#fdd8b0');P(1,15,2,1,'#fff')}
+    // 前腿（朝右）+白鞋
+    var lx=f===0?3:4;P(lx,12,1,4,'#fdd8b0');P(lx,16,2,1,'#fff');
+    // 牛仔裤
+    P(0,9,7,4,'#6088b8');P(0,8,6,1,'#5078a8');
+    // 白T恤
+    P(1,3,5,5,'#fff');P(1,3,4,1,'#eee');
+    // 后手臂（左）
+    P(0,4,1,3,'#fdd8b0');
+    // 前手臂（右，朝前）
+    if(f===0)P(6,5,1,3,'#fdd8b0');else P(6,5,1,2,'#fdd8b0');
+    // 脖子
+    P(3,1,2,2,'#fdd8b0');
+    // 头（侧面朝右）
+    P(2,-1,4,3,'#fdd8b0');P(2,0,5,2,'#fdd8b0'); // 脸稍微凸出
+    P(1,0,1,1,'#fff');
+    // 黑发
+    P(0,-3,7,7,'#1a1a1a');P(1,-2,5,5,'#222');
+    // 眼
+    P(5,1,1,1,'#333');
+    // 嘴
+    P(5,2,1,1,'#fff');
+    g.restore();
+}
+
+// 小猫 (10×12)
+function drawCat(cx,cy){
+    px(cx+2,cy,2,2,'#f80');px(cx+6,cy,2,2,'#f80'); // 耳朵
+    px(cx+1,cy+2,8,4,'#f80'); // 头
+    px(cx+3,cy+3,1,1,'#111');px(cx+6,cy+3,1,1,'#111'); // 眼
+    px(cx+4,cy+5,2,1,'#f6a'); // 鼻
+    px(cx+1,cy+6,8,3,'#f80'); // 身
+    px(cx+3,cy+7,4,2,'#fdd'); // 肚
+    px(cx+1,cy+9,2,2,'#f80');px(cx+7,cy+9,2,2,'#f80'); // 脚
+    px(cx+8,cy+7,2,1,'#f80'); // 尾
+}
+
+// 小狗敌人 (10×14)
+function drawEnemy(ex,ey,frame){
+    const bob=frame%30<15?0:1;
+    // 耳朵
+    px(ex+1,ey-bob,1,3,'#963');px(ex+7,ey-1-bob,1,4,'#963');
+    // 头
+    px(ex+1,ey+2-bob,7,5,'#b75');
+    // 眼
+    px(ex+2,ey+3-bob,1,1,'#111');px(ex+5,ey+3-bob,1,1,'#111');
+    // 鼻
+    px(ex+3,ey+5-bob,2,1,'#333');
+    // 身
+    px(ex+1,ey+7-bob,7,4,'#b75');
+    px(ex+2,ey+8-bob,4,2,'#fd9'); // 肚
+    // 腿
+    px(ex+1,ey+11-bob,2,2,'#b75');px(ex+6,ey+11-bob,2,2,'#b75');
+    px(ex+1,ey+13-bob,2,1,'#fff');px(ex+6,ey+13-bob,2,1,'#fff'); // 爪
+    // 尾巴
+    const tw=Math.sin(frame*.15)*1;
+    px(ex+8,ey+8-bob+tw,1,2,'#b75');
+}
+
+// 飞鸟 (10×8)
+function drawBird(bx,by,frame){
+    const flap=Math.sin(frame*.2)*2;
+    // 身体
+    px(bx+2,by+2+flap,6,3,'#e8e8e8');
+    // 头
+    px(bx+3,by+flap,4,3,'#ddd');
+    px(bx+4,by-1+flap,2,1,'#f80'); // 冠
+    px(bx+5,by+1,1,1,'#111'); // 眼
+    // 翅膀
+    px(bx+1,by+3+flap,2,2,'#ccc');px(bx+7,by+3+flap,2,2,'#ccc');
+    // 尾
+    px(bx,by+3+flap,2,1,'#bbb');
+}
+
+// 金币 (8×8)
+function drawCoin(cx,cy,frame){
+    const w=frame%20<10?6:4;
+    px(cx+4-w/2,cy+4-w/2,w,w,'#fd0');px(cx+1,cy+1,2,2,'#ff8');
+}
+
+// 爱心 (8×8)
+function drawHeart(hx,hy){
+    px(hx+1,hy,3,2,'#f44');px(hx,hy+1,5,1,'#f44');px(hx+2,hy+2,2,1,'#f44');
+    px(hx+1,hy+3,1,1,'#f44');px(hx+4,hy+3,1,1,'#f44');
+    px(hx,hy+1,1,1,'#f66');px(hx+5,hy+1,1,1,'#f66');
+}
+
+// ==================== 关卡数据 ====================
+// tile=16px
+const TW=16;
+const LEVEL_LEN=210;
+const groundY=15; // ground surface tile row
+
+// 地面段（缝隙≤5格，可跳过）
+const groundSegments=[[0,36],[40,73],[77,109],[113,146],[150,LEVEL_LEN-1]];
+
+// 浮空平台 [tileX, tileY, width]
+const platforms=[
+    [10,12,3],[22,10,2],[30,13,2],[38,11,3],
+    [48,12,2],[56,10,3],[66,13,2],[74,11,3],
+    [84,12,2],[92,9,3],[100,13,2],[108,11,3],
+    [118,12,3],[128,10,2],[136,13,2],[142,11,3],
+    [152,12,2],[160,9,3],[168,12,3],[178,10,2],
+    [186,12,2],[194,10,3],
+];
+
+// 小狗 — 在地上
+const enemyPos=[
+    [15,14],[30,14],[44,14],[58,14],[68,14],
+    [82,14],[95,14],[108,14],[120,14],[132,14],
+    [145,14],[158,14],[170,14],[182,14],[194,14],
+];
+
+// 金币
+const coinPos=[
+    [10,11],[22,9],[30,12],[38,10],[44,11],
+    [48,11],[56,9],[66,12],[74,10],[84,11],
+    [92,8],[100,12],[108,10],[118,11],[128,9],
+    [136,12],[142,10],[152,11],[160,8],[168,11],
+    [178,9],[186,11],[194,9],[200,12],
+];
+
+// 飞鸟 [tileX, tileY(空中)]
+const birdPos=[
+    [20,8],[45,7],[60,9],[80,6],[100,8],
+    [120,7],[140,9],[155,8],[175,6],[190,8],
+];
+
+const catPos={tx:202, ty:groundY}; // 猫在地上
+
+// ==================== 游戏状态 ====================
+const player={
+    x:112, y:groundY*TW-18, w:6, h:16,
+    vx:0, vy:0,
+    onGround:false,
+    frame:0,
+    dir:1,
+    lives:5,
+    checkpoint:0,
+    invincible:0, // 无敌帧数
+};
+const ball={x:0,y:0,vx:0,vy:0,active:false,cooldown:0};
+const checkpoints=[{tx:30,ty:groundY},{tx:80,ty:groundY},{tx:140,ty:groundY}];
+let coins=[],enemies=[],birds=[];
+let score=0, coinCount=0, dogKills=0;
+let cameraX=0;
+let gameState='menu';
+let deadTimer=0;
+let frameCount=0;
+let particles=[];
+let flagRaise=[0,0,0];
+
+function getCheckpointRespawn(){
+    for(let i=checkpoints.length-1;i>=0;i--){
+        if(player.checkpoint>=i+1) return checkpoints[i];
+    }
+    return {tx:7,ty:groundY}; // 起点（出站口右侧）
+}
+
+function resetLevel(){
+    const cp=getCheckpointRespawn();
+    player.x=cp.tx*TW; player.y=cp.ty*TW-18; player.vx=0; player.vy=0; player.frame=0; player.dir=1;
+    player.invincible=120; // 2秒无敌
+    ball.active=false;ball.cooldown=0;
+    if(gameState==='dead')player.lives--;
+    if(player.lives<=0){
+        player.lives=5;score=0;player.checkpoint=0;flagRaise=[0,0,0];dogKills=0;coinCount=0;
+        player.x=112;player.y=groundY*TW-24; // 从地铁站复活
+    }
+    cameraX=Math.max(0,player.x-IW/2);
+    gameState='playing';
+    deadTimer=0;
+    particles=[];
+    coins=coinPos.map(c=>({tx:c[0],ty:c[1],alive:true}));
+    enemies=enemyPos.map(e=>({tx:e[0],ty:e[1],vx:.04,frame:0,alive:true}));
+    birds=birdPos.map(b=>({tx:b[0],ty:b[1],vx:.035,frame:0,alive:true}));
+}
+
+// 碰撞检测工具
+function rectCollide(ax,ay,aw,ah,bx,by,bw,bh){
+    return ax<bx+bw && ax+aw>bx && ay<by+bh && ay+ah>by;
+}
+function tileAt(tx,ty){
+    // 检查浮空平台
+    for(const p of platforms){
+        if(tx>=p[0]&&tx<p[0]+p[2]&&ty===p[1])return'solid';
+    }
+    // 检查地面
+    for(const seg of groundSegments){
+        if(tx>=seg[0]&&tx<=seg[1]&&ty===groundY)return'solid';
+    }
+    return null;
+}
+function solidAt(px,py){
+    const lt=Math.floor(px/TW), rt=Math.floor((px+player.w-1)/TW);
+    const tt=Math.floor(py/TW), bt=Math.floor((py+player.h-1)/TW);
+    for(let tx=lt;tx<=rt;tx++)for(let ty=tt;ty<=bt;ty++)if(tileAt(tx,ty))return true;
+    return false;
+}
+
+// ==================== 更新 ====================
+function update(){
+    if(player.invincible>0)player.invincible--;
+    if(gameState==='menu'){
+        frameCount++;
+        if(keys['Enter']||keys[' ']||inputJump()){gameState='playing';resetLevel()}
+        return;
+    }
+    if(gameState==='dead'){
+        deadTimer--;
+        if(deadTimer<=0)resetLevel();
+        // 粒子
+        for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life--}
+        particles=particles.filter(p=>p.life>0);
+        return;
+    }
+    if(gameState==='win'){
+        frameCount++;
+        if(keys['Enter']||keys[' ']){
+            localStorage.setItem('farm_coins',coinCount);
+            localStorage.setItem('farm_dogKills',dogKills);
+            localStorage.setItem('farm_score',score);
+            window.location.href='farm.html';
+        }
+        return;
+    }
+
+    frameCount++;
+
+    // 玩家移动（更慢更优雅）
+    const speed=1.5;
+    if(inputLeft()){player.vx=-speed;player.dir=-1;player.frame++}
+    else if(inputRight()){player.vx=speed;player.dir=1;player.frame++}
+    else{player.vx*=0.65;if(Math.abs(player.vx)<.08)player.vx=0}
+
+    // 跳跃
+    if(inputJump()&&player.onGround){player.vy=-6.2;player.onGround=false;sfxJump()}
+
+    // 踢足球 J键
+    if(keys['j']||keys['J']){
+        if(!ball.active&&ball.cooldown<=0){
+            ball.active=true;ball.cooldown=30;
+            ball.x=player.x+(player.dir>0?14:-4);ball.y=player.y+10;
+            ball.vx=player.dir*5;ball.vy=-2.5;
+            beep(500,.06,.04);
+            for(let i=0;i<5;i++)particles.push({x:ball.x,y:ball.y,vx:(Math.random()-.5)*2,vy:-Math.random()*2,life:10,color:'#fff'});
+        }
+    }
+    if(ball.cooldown>0)ball.cooldown--;
+
+    // 重力
+    player.vy+=0.22;
+    if(player.vy>8)player.vy=8;
+
+    // X 移动 + 碰撞
+    player.x+=player.vx;
+    if(player.x<0)player.x=0;
+    if(player.x>LEVEL_LEN*TW-player.w)player.x=LEVEL_LEN*TW-player.w;
+    if(solidAt(player.x,player.y)){
+        if(player.vx>0)player.x=Math.floor((player.x+player.w)/TW)*TW-player.w;
+        else player.x=(Math.floor(player.x/TW)+1)*TW;
+        player.vx=0;
+    }
+
+    // Y 移动 + 碰撞
+    player.y+=player.vy;
+    player.onGround=false;
+    if(solidAt(player.x,player.y)){
+        if(player.vy>0){player.y=Math.floor((player.y+player.h)/TW)*TW-player.h;player.onGround=true}
+        else player.y=(Math.floor(player.y/TW)+1)*TW;
+        player.vy=0;
+    }
+
+    // 足球物理
+    if(ball.active){
+        ball.vy+=0.18;ball.x+=ball.vx;ball.y+=ball.vy;
+        if(ball.y>IH+10||ball.x<0||ball.x>LEVEL_LEN*TW)ball.active=false;
+        if(solidAt(ball.x,ball.y)){ball.vy*=-.5;ball.vx*=.7;ball.y-=4;}
+        // 足球击中敌人
+        for(const e of enemies){
+            if(!e.alive||!ball.active)continue;
+            if(rectCollide(ball.x,ball.y,6,6,e.tx*TW,e.ty*TW,10,14)){
+                e.alive=false;ball.vx*=-.5;ball.vy=-2;score+=150;dogKills++;
+                for(let i=0;i<6;i++)particles.push({x:e.tx*TW+5,y:e.ty*TW+5,vx:(Math.random()-.5)*3,vy:-Math.random()*4-1,life:15,color:'#ff0'});
+            }
+        }
+    }
+
+    // 掉落死亡（无敌时不掉命）
+    if(player.y>IH+30&&player.invincible<=0){die()}
+
+    // 相机
+    const targetCX=player.x-IW/2+player.w/2;
+    cameraX+=(targetCX-cameraX)*0.12;
+    if(cameraX<0)cameraX=0;
+    if(cameraX>LEVEL_LEN*TW-IW)cameraX=LEVEL_LEN*TW-IW;
+
+    // 金币收集
+    for(const c of coins){
+        if(!c.alive)continue;
+        const cx=c.tx*TW, cy=c.ty*TW;
+        if(rectCollide(player.x,player.y,player.w,player.h,cx,cy,8,8)){
+            c.alive=false; coinCount++; score+=100;
+            sfxCoin();
+            for(let i=0;i<6;i++)particles.push({x:cx+4,y:cy+4,vx:(Math.random()-.5)*2,vy:-Math.random()*3-1,life:15,color:'#fd0'});
+        }
+    }
+
+    // 敌人更新
+    for(const e of enemies){
+        if(!e.alive)continue;
+        e.frame++;
+        e.tx+=e.vx;
+        // 小狗在地上左右巡逻
+        const ex=e.tx*TW, ey=e.ty*TW;
+        // 检测前方脚下有无地面（防摔落）
+        const aheadTx=Math.floor((ex+(e.vx>0?12:0))/TW);
+        if(!tileAt(aheadTx,groundY))e.vx*=-1;
+        // 检测前方身体位置有无阻挡
+        if(tileAt(aheadTx,e.ty))e.vx*=-1;
+        // 玩家碰撞
+        if(rectCollide(player.x,player.y,player.w,player.h,ex,ey,10,14)){
+            if(player.vy>0&&player.y+player.h-ey<8){
+                e.alive=false; player.vy=-3; score+=200; dogKills++;
+                for(let i=0;i<8;i++)particles.push({x:ex+5,y:ey+5,vx:(Math.random()-.5)*3,vy:-Math.random()*4-1,life:18,color:'#a8f'});
+            }else if(player.invincible<=0){die()}
+        }
+    }
+
+    // 飞鸟更新
+    for(const b of birds){
+        if(!b.alive)continue;
+        b.frame++;b.tx+=b.vx;
+        const bx=b.tx*TW,by=b.ty*TW;
+        // 掉头
+        if(b.tx<2||b.tx>LEVEL_LEN-2)b.vx*=-1;
+        if(Math.random()<.005)b.vx*=-1;
+        // 玩家碰撞
+        if(rectCollide(player.x,player.y,player.w,player.h,bx,by,10,8)){
+            b.alive=false;
+            if(player.invincible<=0)die();
+            for(let i=0;i<8;i++)particles.push({x:bx+5,y:by+4,vx:(Math.random()-.5)*3,vy:-Math.random()*3-1,life:12,color:'#fff'});
+        }
+        // 足球击中鸟
+        if(ball.active&&rectCollide(ball.x,ball.y,6,6,bx,by,10,8)){
+            b.alive=false;ball.vx*=-.3;ball.vy=-1.5;score+=200;
+            for(let i=0;i<6;i++)particles.push({x:bx+5,y:by+4,vx:(Math.random()-.5)*3,vy:-Math.random()*4-1,life:15,color:'#fe0'});
+        }
+    }
+
+    // 存档点检测 + 升旗动画
+    for(let i=0;i<checkpoints.length;i++){
+        const cp=checkpoints[i];
+        if(player.checkpoint<=i&&rectCollide(player.x,player.y,player.w,player.h,cp.tx*TW,cp.ty*TW-110,16,120)){
+            player.checkpoint=i+1;
+            beep(660,.08,.04);beep(880,.12,.05);
+            for(let j=0;j<10;j++)particles.push({x:cp.tx*TW+8,y:cp.ty*TW-90,vx:(Math.random()-.5)*2,vy:-Math.random()*3-1,life:20,color:'#4f8'});
+        }
+        // 旗升起动画
+        if(player.checkpoint>i&&flagRaise[i]<1)flagRaise[i]=Math.min(1,flagRaise[i]+.03);
+    }
+
+    // 到达小猫
+    const cx=catPos.tx*TW, cy=catPos.ty*TW-14;
+    if(rectCollide(player.x,player.y,player.w,player.h,cx,cy,10,14)){
+        gameState='win'; sfxWin();
+    }
+
+    // 粒子
+    for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.life--}
+    particles=particles.filter(p=>p.life>0);
+
+    UI.textContent=`❤️×${player.lives}  🪙×${coinCount}  💾×${player.checkpoint}/3`;
+}
+
+function die(){
+    if(gameState!=='playing')return;
+    gameState='dead'; deadTimer=50; sfxHit();
+    for(let i=0;i<15;i++)particles.push({x:player.x+6,y:player.y+8,vx:(Math.random()-.5)*4,vy:-Math.random()*5-2,life:25,color:'#f88'});
+}
+
+// ==================== 渲染 ====================
+function drawTile(tx,ty,color){
+    const x=tx*TW-cameraX, y=ty*TW;
+    if(x<-16||x>IW)return;
+    px(x,y,TW,TW,color);
+}
+
+function render(){
+    g.clearRect(0,0,IW,IH);
+
+    // 开始菜单
+    if(gameState==='menu'){
+        g.fillStyle='#0a0a2e';g.fillRect(0,0,IW,IH);
+        // 星星
+        for(let i=0;i<40;i++){
+            const tw=Math.sin(frameCount*.04+i)*.5+.5;
+            g.fillStyle=`rgba(255,255,240,${.3+tw*.7})`;
+            g.fillRect((i*73)%IW,(i*47)%(groundY*TW-20),1.5,1.5);
+        }
+        // 月亮
+        const mx3=IW-80,my3=30;
+        g.fillStyle='#ffe';g.beginPath();g.arc(mx3,my3,16,0,Math.PI*2);g.fill();
+        g.fillStyle='#0a0a2e';g.beginPath();g.arc(mx3+5,my3-3,13,0,Math.PI*2);g.fill();
+        // 草地和地铁站
+        g.fillStyle='#4a8030';g.fillRect(0,groundY*TW,IH,IH-groundY*TW);
+        // 迷你地铁出站口（夜间暖光）
+        const mx2=30,my2=groundY*TW;
+        g.fillStyle='rgba(255,220,150,.1)';g.beginPath();g.arc(mx2+20,my2-18,22,0,Math.PI*2);g.fill();
+        g.fillStyle='#c8dde8';g.beginPath();
+        g.moveTo(mx2,my2-28);g.lineTo(mx2+12,my2-32);g.quadraticCurveTo(mx2+20,my2-34,mx2+28,my2-32);g.lineTo(mx2+40,my2-28);
+        g.lineTo(mx2+38,my2-26);g.quadraticCurveTo(mx2+20,my2-30,mx2+12,my2-30);g.quadraticCurveTo(mx2+2,my2-30,mx2,my2-26);
+        g.closePath();g.fill();
+        g.fillStyle='#8899aa';g.fillRect(mx2+2,my2-26,2,26);
+        g.fillRect(mx2+36,my2-26,2,26);
+        for(let s=0;s<4;s++){g.fillStyle='#bbb';g.fillRect(mx2+8+s*5,my2-10+s*3,7,2)}
+        g.fillStyle='#e44';g.fillRect(mx2-2,my2-30,3,30);
+        g.fillStyle='#fff';g.fillRect(mx2+8,my2-36,24,5);
+        g.fillStyle='#222';g.font='4px "PingFang SC","Microsoft YaHei",sans-serif';g.fillText('中医药大学站',mx2+9,my2-33);
+        // 标题
+        g.fillStyle='#fff';g.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';
+        g.textAlign='center';
+        g.fillText('🐱 拯救 cheeze',IW/2,IH/2-55);
+        g.font='12px "PingFang SC","Microsoft YaHei",sans-serif';
+        g.fillStyle='#ffd';
+        g.fillText('冥冥之中有预感也许金币有所作用',IW/2,IH/2-20);
+        // 闪烁提示
+        const blink=Math.sin(frameCount*.06)>.3;
+        if(blink){
+            g.fillStyle='#fff';g.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';
+            g.fillText('按 空格/Enter 开始游戏',IW/2,IH/2+20);
+        }
+        // 女孩和猫
+        drawGirl(IW/2-30,IH/2+40,0,1);
+        drawCat(IW/2+20,IH/2+44);
+        g.textAlign='start';
+        return;
+    }
+
+    // 夜空
+    const skyGrad=g.createLinearGradient(0,0,0,IH);
+    skyGrad.addColorStop(0,'#0a0a2e');skyGrad.addColorStop(0.5,'#1a1a3e');skyGrad.addColorStop(1,'#2a2a4e');
+    g.fillStyle=skyGrad;g.fillRect(0,0,IW,IH);
+
+    // 星星
+    for(let i=0;i<60;i++){
+        const sx=(i*137+cameraX*0.1)%(IW+40)-20;
+        const sy=(i*89)%(groundY*TW-20)+8;
+        const tw=Math.sin(frameCount*.03+i)*.5+.5;
+        g.fillStyle=`rgba(255,255,240,${.3+tw*.7})`;
+        g.fillRect(Math.floor(sx),Math.floor(sy),1+Math.floor(tw*1.5),1+Math.floor(tw*1.5));
+    }
+
+    // 月亮
+    const moonX=IW-60-cameraX*.05,moonY=35;
+    g.fillStyle='#ffe';g.beginPath();g.arc(moonX,moonY,20,0,Math.PI*2);g.fill();
+    g.fillStyle='#0a0a2e';g.beginPath();g.arc(moonX+7,moonY-3,16,0,Math.PI*2);g.fill();
+
+    // 远山（暗色剪影）
+    g.fillStyle='#1a2a1a';
+    for(let i=0;i<12;i++){const mx=i*110-cameraX*0.3;g.beginPath();g.arc(mx,groundY*TW-20,50+Math.sin(i)*20,0,Math.PI);g.fill()}
+
+    // 路灯/光点
+    g.fillStyle='#ffd8a0';
+    for(let i=0;i<6;i++){
+        const lx=(i*160+60-cameraX*.5)%(LEVEL_LEN*TW+200)-100;
+        if(lx>-20&&lx<IW+20){
+            g.fillStyle='rgba(255,220,160,.3)';g.beginPath();g.arc(lx,groundY*TW-10,22,0,Math.PI*2);g.fill();
+            g.fillStyle='#ffd8a0';g.fillRect(lx-1,groundY*TW-32,2,24);
+            g.fillStyle='#ffe';g.beginPath();g.arc(lx,groundY*TW-34,5,0,Math.PI*2);g.fill();
+        }
+    }
+
+    // 地铁出站口 — 浙江中医药大学站（玻璃亭+阶梯向下，夜间灯光）
+    (function(){
+        const mx=-2*TW-cameraX, my=groundY*TW;
+        if(mx>-80&&mx<IW+60){
+            const x=mx, y=my;
+            // 暖光溢出
+            g.fillStyle='rgba(255,220,150,.12)';g.beginPath();
+            g.arc(x+38,y-30,45,0,Math.PI*2);g.fill();
+            // 弧形玻璃顶棚
+            g.fillStyle='#c8dde8';g.beginPath();
+            g.moveTo(x,y-60);g.lineTo(x+22,y-68);g.quadraticCurveTo(x+38,y-72,x+54,y-68);g.lineTo(x+76,y-60);
+            g.lineTo(x+74,y-58);g.quadraticCurveTo(x+54,y-66,x+38,y-66);g.quadraticCurveTo(x+22,y-66,x+2,y-58);
+            g.closePath();g.fill();
+            // 顶棚边框
+            g.strokeStyle='#8899aa';g.lineWidth=1.5;
+            g.beginPath();g.moveTo(x,y-60);g.lineTo(x+22,y-68);g.quadraticCurveTo(x+38,y-72,x+54,y-68);g.lineTo(x+76,y-60);g.stroke();
+            // 玻璃反光
+            g.fillStyle='rgba(255,255,255,.4)';g.fillRect(x+20,y-65,8,5);
+            g.fillStyle='rgba(255,255,255,.3)';g.fillRect(x+44,y-66,6,6);
+            // 支撑柱
+            g.fillStyle='#8899aa';g.fillRect(x+2,y-58,3,58);
+            g.fillStyle='#8899aa';g.fillRect(x+73,y-58,3,58);
+            // 栏杆/玻璃围挡
+            g.fillStyle='rgba(180,210,230,.7)';g.fillRect(x+5,y-58,4,28);
+            g.fillRect(x+69,y-58,4,28);
+            // 横杆
+            g.fillStyle='#8899aa';g.fillRect(x+3,y-38,72,2);
+            g.fillRect(x+3,y-52,72,1.5);
+            // 阶梯向下
+            for(let s=0;s<6;s++){
+                g.fillStyle='#bbb';g.fillRect(x+14+s*8,y-24+s*5,11,3);
+                g.fillStyle='#ccc';g.fillRect(x+14+s*8,y-24+s*5,11,1);
+            }
+            // 阶梯两侧护墙
+            g.fillStyle='#99a';g.fillRect(x+5,y-54,4,54);
+            g.fillRect(x+69,y-54,4,54);
+            // 地铁标识柱
+            g.fillStyle='#e44';g.fillRect(x-4,y-68,4,68);
+            g.fillStyle='#fff';g.fillRect(x-3,y-66,2,28);
+            // 站名牌
+            g.fillStyle='#fff';g.fillRect(x+16,y-78,48,10);
+            g.fillStyle='#c44';g.fillRect(x+16,y-79,48,2);
+            g.fillStyle='#222';g.font='7px "PingFang SC","Microsoft YaHei",sans-serif';
+            g.fillText('浙江中医药大学站',x+18,y-70);
+            // 地铁logo
+            g.fillStyle='#e44';g.beginPath();g.arc(x-2,y-64,4,0,Math.PI*2);g.fill();
+            g.fillStyle='#fff';g.font='6px sans-serif';g.fillText('🚇',x-5,y-62);
+        }
+    })();
+
+    // 地面
+    for(const seg of groundSegments){
+        for(let tx=seg[0];tx<=seg[1];tx++){
+            const x=tx*TW-cameraX;if(x<-16||x>IW)continue;
+            const y=groundY*TW;
+            g.fillStyle='#4a8030';g.fillRect(x,y,16,4);
+            g.fillStyle='#3a6828';g.fillRect(x,y+1,16,3);
+            g.fillStyle='#5a4a2a';g.fillRect(x,y+4,16,12);
+            if(tx%3===0){g.fillStyle='#5a9840';g.fillRect(x+4,y-1,1,2)}
+            if(tx%6===0){g.fillStyle='#777';g.fillRect(x+8,y+3,2,1)}
+        }
+    }
+
+    // 平台
+    for(const p of platforms){
+        for(let tx=p[0];tx<p[0]+p[2];tx++){
+            const x=tx*TW-cameraX;if(x<-16||x>IW)continue;
+            const y=p[1]*TW;
+            g.fillStyle='#a08050';g.fillRect(x,y,16,3);
+            g.fillStyle='#6a4828';g.fillRect(x,y+3,16,4);
+            g.fillStyle='#5a3818';g.fillRect(x,y+5,16,2);
+            if(tx%2===0){g.fillStyle='#7a5830';g.fillRect(x+4,y+3,1,3)}
+        }
+    }
+
+    // 金币
+    for(const c of coins){if(!c.alive)continue;drawCoin(c.tx*TW-cameraX,c.ty*TW,frameCount)}
+
+    // 敌人 — 小狗
+    for(const e of enemies){if(!e.alive)continue;drawEnemy(e.tx*TW-cameraX,e.ty*TW,e.frame)}
+
+    // 飞鸟
+    for(const b of birds){if(!b.alive)continue;drawBird(b.tx*TW-cameraX,b.ty*TW,b.frame)}
+
+    // 存档点旗 — 4倍高旗杆
+    for(let i=0;i<checkpoints.length;i++){
+        const cp=checkpoints[i];
+        const fx=cp.tx*TW-cameraX, fy=cp.ty*TW;
+        const fr=flagRaise[i];
+        const poleH=110, flagTravel=90;
+        const flagY=fy-poleH+Math.floor((1-fr)*flagTravel);
+        // 旗杆
+        px(fx+7,fy-poleH,2,poleH,'#ccc');
+        // 旗
+        const taken=player.checkpoint>i;
+        px(fx+9,flagY,6,5,taken?'#4f8':'#fa0');
+        // 标签
+        if(taken){
+            g.fillStyle='#fff';g.font='7px "PingFang SC","Microsoft YaHei",sans-serif';
+            g.fillText('💾',fx+5,fy-poleH-10);
+        }
+    }
+
+    // 小猫
+    drawCat(catPos.tx*TW-cameraX,catPos.ty*TW-14);
+    g.fillStyle='#fff';g.font='8px "PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('cheeze🐱',catPos.tx*TW-cameraX-10,catPos.ty*TW-28);
+
+    // 足球
+    if(ball.active){
+        px(ball.x-cameraX-3,ball.y-3,6,6,'#fff');px(ball.x-cameraX-2,ball.y-2,4,4,'#111');
+        px(ball.x-cameraX-1,ball.y,2,1,'#fff');px(ball.x-cameraX,ball.y-1,1,2,'#fff');
+    }
+
+    // 玩家（无敌时闪烁）
+    if(gameState!=='dead'||deadTimer%6<3){
+        if(player.invincible<=0||Math.floor(player.invincible/4)%2===0){
+            drawGirl(player.x-cameraX,player.y,player.frame,player.dir);
+        }
+    }
+
+    // 粒子（更大更明显）
+    for(const p of particles){px(p.x-cameraX,p.y,3,3,p.color)}
+
+    // 终点旗
+    const flagX=catPos.tx*TW-cameraX-10;
+    px(flagX,catPos.ty*TW-50,3,40,'#ddd');
+    px(flagX+3,catPos.ty*TW-50,8,5,'#f44');
+
+    // 胜利画面
+    if(gameState==='win'){
+        g.fillStyle='rgba(0,0,0,.6)';g.fillRect(0,0,IW,IH);
+        g.fillStyle='#fff';g.font='bold 18px "PingFang SC","Microsoft YaHei",sans-serif';
+        g.textAlign='center';
+        g.fillText('🎉 王小二拯救了 cheeze！',IW/2,IH/2-50);
+        // 称号
+        const titles=[];
+        if(coinCount>6)titles.push('💰 金钱大亨');
+        if(dogKills>6)titles.push('🐶 大狗嚼嚼嚼');
+        if(titles.length>0){
+            g.fillStyle='#fd0';g.font='bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+            g.fillText(titles.join('  '),IW/2,IH/2-22);
+        }
+        g.fillStyle='#fff';g.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
+        g.fillText('一位神秘的女士想要在她家的农场',IW/2,IH/2);
+        g.fillText('见她一面......',IW/2,IH/2+20);
+        g.font='11px "PingFang SC","Microsoft YaHei",sans-serif';
+        g.fillStyle='#aaa';
+        g.fillText(`🪙×${coinCount}  🐶×${dogKills}  ⭐${score}`,IW/2,IH/2+45);
+        g.fillStyle='#fd0';g.font='bold 13px "PingFang SC","Microsoft YaHei",sans-serif';
+        g.fillText('按 Enter 见见这位神秘的小猫主人',IW/2,IH/2+68);
+        g.fillText('按 R 重新冒险',IW/2,IH/2+84);
+        g.textAlign='start';
+        drawGirl(IW/2-30,IH/2-75,0,1);
+        drawCat(IW/2+18,IH/2-68);
+    }
+}
+
+// ==================== 游戏循环 ====================
+function loop(){
+    update();render();
+    // 离屏 → 屏幕，像素缩放
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(off,0,0,IW,IH,0,0,canvas.width,canvas.height);
+    requestAnimationFrame(loop);
+}
+
+// R 键从起点重新开始
+window.addEventListener('keydown',e=>{
+    if(e.key==='r'||e.key==='R'){
+        player.checkpoint=0;flagRaise=[0,0,0];player.lives=5;score=0;dogKills=0;
+        resetLevel();
+    }
+});
+
+// 窗口大小
+window.addEventListener('resize',resizeCanvas);
+
+resetLevel();
+loop();
+})();
+</script>
+<iframe src="bgm.html" style="display:none;"></iframe>
+</body>
+</html>

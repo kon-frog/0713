@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点餐 </title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <iframe src="bgm.html" style="display:none;"></iframe>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: #faf7f2 url('food.jpg') center/cover no-repeat fixed;
+            min-height: 100vh;
+            color: #3d2c1a;
+            position: relative;
+        }
+
+        /* 页面过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fdf8f5; z-index: 99999;
+            animation: pageIn 0.5s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        .page-transition.out {
+            animation: pageOut 0.4s cubic-bezier(0.23,1,0.32,1) forwards;
+        }
+        @keyframes pageIn { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes pageOut { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(250, 247, 242, 0.85);
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 20px 16px 100px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border-radius: 20px;
+            color: #a08060;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            border: 1px solid #e8ddd0;
+        }
+        .back-btn:hover { background: #fdf8f3; border-color: #d4b896; color: #8b5a2b; }
+
+        .page-header { text-align: center; margin-bottom: 28px; }
+        .page-title { font-size: 28px; font-weight: 800; letter-spacing: 2px; color: #3d2c1a; }
+
+        .menu-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow:
+                0 2px 8px rgba(0,0,0,0.04),
+                0 8px 24px rgba(180,140,100,0.08);
+            transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+            position: relative;
+            overflow: hidden;
+        }
+        .menu-card:hover {
+            border-color: rgba(212,168,96,0.3);
+            box-shadow:
+                0 4px 16px rgba(0,0,0,0.06),
+                0 12px 36px rgba(180,140,100,0.15);
+            transform: translateY(-2px);
+        }
+        .menu-card .card-emoji {
+            position: absolute;
+            top: 10px; right: 50px;
+            font-size: 28px;
+            opacity: 0.12;
+            pointer-events: none;
+        }
+        .menu-card .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; user-select: none;
+        }
+        .menu-card .card-header .card-title {
+            font-size: 15px; font-weight: 700; color: #4a3720; letter-spacing: 1px;
+        }
+        .menu-card .card-header .card-price {
+            font-size: 14px; font-weight: 800; color: #c07830;
+            background: rgba(212,168,96,0.1);
+            padding: 2px 10px; border-radius: 12px;
+        }
+        .menu-card .card-header .arrow {
+            font-size: 12px; color: #c0b0a0; transition: transform 0.3s; margin-left: 8px;
+        }
+        .menu-card.open .card-header .arrow { transform: rotate(180deg); }
+
+        .menu-card .card-body {
+            display: none; margin-top: 12px; padding-top: 12px;
+            border-top: 1px solid #f5ede0;
+        }
+        .menu-card.open .card-body { display: block; }
+
+        .card-body .row {
+            display: flex; align-items: center; justify-content: space-between; padding: 6px 0;
+        }
+        .card-body .row-label { font-size: 12px; color: #a09080; letter-spacing: 1px; }
+
+        .qty-control { display: flex; align-items: center; gap: 10px; }
+        .qty-btn {
+            width: 32px; height: 32px;
+            border: 2px solid #e0d5c5; border-radius: 50%;
+            background: rgba(255,255,255,0.8); cursor: pointer;
+            font-size: 18px; display: flex; align-items: center; justify-content: center;
+            color: #8b6a4a; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .qty-btn:hover { background: #fdf6ee; border-color: #d4a060; color: #d4a060; box-shadow: 0 2px 8px rgba(180,140,100,0.2); transform: scale(1.1); }
+        .qty-btn:active { transform: scale(0.9); transition: transform 0.1s; }
+        .qty-num { font-weight: 700; font-size: 15px; min-width: 22px; text-align: center; color: #4a3720; }
+
+        .option-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .option-tag {
+            padding: 6px 14px; border: 1.5px solid #e8ddd0; border-radius: 18px;
+            cursor: pointer; font-size: 12px; transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            background: rgba(255,255,255,0.6); color: #a09080; letter-spacing: 0.5px;
+        }
+        .option-tag:hover { border-color: #d4a060; color: #8b5a2b; background: rgba(255,255,255,0.9); }
+        .option-tag.selected { background: linear-gradient(135deg, #4a3720, #3d2c1a); color: #fff; border-color: #3d2c1a; box-shadow: 0 2px 8px rgba(60,40,20,0.2); transform: scale(1.05); }
+
+        .wish-input {
+            width: 100%; padding: 12px 14px;
+            border: 1px solid #e8ddd0; border-radius: 12px;
+            font-size: 13px; outline: none; margin-top: 8px;
+            font-family: inherit; resize: vertical; min-height: 50px;
+            background: #fdfaf6; color: #4a3720;
+        }
+        .wish-input:focus { border-color: #c0a080; box-shadow: 0 0 0 3px rgba(180,140,100,0.08); background: #fff; }
+        .wish-input::placeholder { color: #c8b8a8; }
+
+        .submit-area { margin-top: 20px; }
+        .submit-btn {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, #4a3720 0%, #3d2c1a 100%);
+            color: #fff;
+            font-size: 15px; font-weight: 700; border: none;
+            border-radius: 16px; cursor: pointer; letter-spacing: 2px;
+            transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+            box-shadow: 0 4px 16px rgba(60,40,20,0.2), 0 8px 24px rgba(60,40,20,0.1);
+        }
+        .submit-btn:hover { background: linear-gradient(135deg, #5a3f28 0%, #4a3720 100%); box-shadow: 0 6px 24px rgba(60,40,20,0.3), 0 12px 36px rgba(60,40,20,0.15); transform: translateY(-2px); }
+        .submit-btn:active { transform: scale(0.98); }
+
+        .music-fab {
+            position: fixed; bottom: 28px; left: 28px;
+            width: 46px; height: 46px;
+            background: rgba(60,40,20,0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(60,40,20,0.15);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; cursor: pointer; z-index: 100;
+            transition: all 0.3s; color: #6b4f32; text-decoration: none;
+        }
+        .music-fab:hover { background: rgba(60,40,20,0.15); transform: scale(1.08); }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 300;
+            display: none; align-items: center; justify-content: center;
+        }
+        .overlay.show { display: flex; }
+
+        .dialog {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 24px; padding: 32px 24px 22px;
+            text-align: center; width: 90%; max-width: 360px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 20px 60px rgba(0,0,0,0.15);
+            animation: fadeUp 0.35s ease;
+        }
+        @keyframes fadeUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .dialog h3 { font-size: 18px; color: #3d2c1a; margin-bottom: 4px; letter-spacing: 1px; }
+        .dialog .msg { font-size: 12px; color: #a09080; margin-bottom: 16px; line-height: 1.6; }
+        .dialog .highlight-num { font-size: 28px; font-weight: 900; color: #e8762e; letter-spacing: 1px; }
+        .dialog .strikethrough { text-decoration: line-through; color: #b0a090; font-size: 14px; }
+        .dialog .btn-primary {
+            width: 100%; padding: 12px; background: #3d2c1a; color: #fff;
+            border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+            cursor: pointer; letter-spacing: 1px; margin-bottom: 6px; transition: all 0.3s;
+        }
+        .dialog .btn-primary:hover { background: #5a3f28; }
+        .dialog .btn-ghost {
+            width: 100%; padding: 10px; background: transparent;
+            border: none; color: #b0a090; font-size: 12px; cursor: pointer;
+        }
+        .dialog .highlight-text { font-weight: 700; font-size: 15px; color: #5a3f28; letter-spacing: 1px; }
+
+        @media (max-width: 400px) {
+            .menu-card { padding: 12px 14px; }
+            .card-title { font-size: 14px; }
+            .option-tag { padding: 4px 10px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-transition"></div>
+
+    <div class="container">
+        <a href="home.html" class="back-btn" onclick="event.preventDefault();goTo('home.html')">← 返回</a>
+        <div class="page-header"><div class="page-title">生日限时特惠</div></div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🍔</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">汉堡（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥32</span>
+                    <span class="qty-num" id="qty-burger">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('burger',-1)">−</button>
+                        <span class="qty-num" id="qty-burger-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('burger',1)">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🧋</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">奶茶（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥15</span>
+                    <span class="qty-num" id="qty-tea">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('tea',-1)">−</button>
+                        <span class="qty-num" id="qty-tea-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('tea',1)">+</button>
+                    </div>
+                </div>
+                <div class="row" style="flex-wrap:wrap;">
+                    <span class="row-label">冰度</span>
+                    <div class="option-group" id="iceOptions">
+                        <span class="option-tag" data-val="正常冰">正常冰</span>
+                        <span class="option-tag selected" data-val="少冰">少冰</span>
+                        <span class="option-tag" data-val="去冰">去冰</span>
+                        <span class="option-tag" data-val="热">热</span>
+                    </div>
+                </div>
+                <div class="row" style="flex-wrap:wrap;">
+                    <span class="row-label">甜度</span>
+                    <div class="option-group" id="sugarOptions">
+                        <span class="option-tag" data-val="全糖">全糖</span>
+                        <span class="option-tag selected" data-val="七分糖">七分糖</span>
+                        <span class="option-tag" data-val="半糖">半糖</span>
+                        <span class="option-tag" data-val="三分糖">三分糖</span>
+                        <span class="option-tag" data-val="无糖">无糖</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🍕</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">披萨（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥48</span>
+                    <span class="qty-num" id="qty-pizza">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('pizza',-1)">−</button>
+                        <span class="qty-num" id="qty-pizza-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('pizza',1)">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🎂</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">蛋糕（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥58</span>
+                    <span class="qty-num" id="qty-cake">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('cake',-1)">−</button>
+                        <span class="qty-num" id="qty-cake-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('cake',1)">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🍢</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">烤串（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥25</span>
+                    <span class="qty-num" id="qty-bbq">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('bbq',-1)">−</button>
+                        <span class="qty-num" id="qty-bbq-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('bbq',1)">+</button>
+                    </div>
+                </div>
+                <div class="row" style="flex-wrap:wrap;">
+                    <span class="row-label">辣度</span>
+                    <div class="option-group spice-group">
+                        <span class="option-tag" data-val="不辣">不辣</span>
+                        <span class="option-tag selected" data-val="微辣">微辣</span>
+                        <span class="option-tag" data-val="中辣">中辣</span>
+                        <span class="option-tag" data-val="重辣">重辣</span>
+                        <span class="option-tag" data-val="变态辣">变态辣</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🍗</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">炸鸡（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥38</span>
+                    <span class="qty-num" id="qty-chicken">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('chicken',-1)">−</button>
+                        <span class="qty-num" id="qty-chicken-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('chicken',1)">+</button>
+                    </div>
+                </div>
+                <div class="row" style="flex-wrap:wrap;">
+                    <span class="row-label">辣度</span>
+                    <div class="option-group spice-group">
+                        <span class="option-tag" data-val="不辣">不辣</span>
+                        <span class="option-tag selected" data-val="微辣">微辣</span>
+                        <span class="option-tag" data-val="中辣">中辣</span>
+                        <span class="option-tag" data-val="重辣">重辣</span>
+                        <span class="option-tag" data-val="变态辣">变态辣</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🍜</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">麻辣烫（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥28</span>
+                    <span class="qty-num" id="qty-malatang">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('malatang',-1)">−</button>
+                        <span class="qty-num" id="qty-malatang-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('malatang',1)">+</button>
+                    </div>
+                </div>
+                <div class="row" style="flex-wrap:wrap;">
+                    <span class="row-label">辣度</span>
+                    <div class="option-group spice-group">
+                        <span class="option-tag selected" data-val="微辣">微辣</span>
+                        <span class="option-tag" data-val="中辣">中辣</span>
+                        <span class="option-tag" data-val="重辣">重辣</span>
+                        <span class="option-tag" data-val="变态辣">变态辣</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🍚</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">炒饭（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥18</span>
+                    <span class="qty-num" id="qty-rice">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('rice',-1)">−</button>
+                        <span class="qty-num" id="qty-rice-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('rice',1)">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🥟</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">馄饨（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥16</span>
+                    <span class="qty-num" id="qty-wonton">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('wonton',-1)">−</button>
+                        <span class="qty-num" id="qty-wonton-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('wonton',1)">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <span class="card-emoji">🥬</span>
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">菜饭（随机）</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="card-price">¥12</span>
+                    <span class="qty-num" id="qty-veggie">0</span>
+                    <span class="arrow">▾</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="row-label">数量</span>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('veggie',-1)">−</button>
+                        <span class="qty-num" id="qty-veggie-inner">0</span>
+                        <button class="qty-btn" onclick="event.stopPropagation();changeQty('veggie',1)">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-card">
+            <div class="card-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="card-title">希望菜品与备注</span>
+                <span class="arrow">▾</span>
+            </div>
+            <div class="card-body">
+                <textarea class="wish-input" id="wishInput" placeholder="你还想吃什么？写下来吧~"></textarea>
+            </div>
+        </div>
+
+        <div class="submit-area">
+            <button class="submit-btn" onclick="submitOrder()">提交订单</button>
+        </div>
+    </div>
+
+    <!-- 幸运优惠弹窗 -->
+    <div class="overlay" id="luckyOverlay">
+        <div class="dialog">
+            <h3>恭喜您  ⌯>ᴗo⌯ .ᐟ.ᐟ</h3>
+            <div class="msg">获得幸运优惠！</div>
+            <div>
+                <span class="strikethrough">¥<span id="luckyOriginal">0</span></span>
+                &nbsp;→&nbsp;
+                <span class="highlight-num">¥0.1</span>
+            </div>
+            <button class="btn-primary" onclick="confirmLucky()">确认提交</button>
+            <button class="btn-ghost" onclick="closeLucky()">取消</button>
+        </div>
+    </div>
+
+    <!-- 系统错误弹窗 -->
+    <div class="overlay" id="errorOverlay">
+        <div class="dialog">
+            <h3>系统错误</h3>
+            <div class="msg">订单提交失败，服务器繁忙</div>
+            <button class="btn-primary" onclick="showSolution()">查看解决方案</button>
+            <button class="btn-ghost" onclick="closeError()">关闭</button>
+        </div>
+    </div>
+
+    <!-- 解决方案弹窗 -->
+    <div class="overlay" id="solutionOverlay">
+        <div class="dialog">
+            <h3>解决方案</h3>
+            <div class="msg">
+                请给 <span class="highlight-text">终于先生</span><br>
+                微信付款并<strong>备注菜品与地址</strong><br>
+                谢谢 qwq
+            </div>
+            <button class="btn-primary" onclick="copyOrder()">复制订单信息</button>
+            <button class="btn-ghost" onclick="closeSolution()">知道了</button>
+        </div>
+    </div>
+
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script>
+        function goTo(page){
+            document.querySelector('.page-transition').classList.add('out');
+            setTimeout(() => { window.location.href = page; }, 400);
+        }
+        const menuList = [
+            { key: 'burger',  name: '汉堡',   price: 32  },
+            { key: 'tea',     name: '奶茶',   price: 15  },
+            { key: 'pizza',   name: '披萨',   price: 48  },
+            { key: 'cake',    name: '蛋糕',   price: 58 },
+            { key: 'bbq',     name: '烤串',   price: 25  },
+            { key: 'chicken', name: '炸鸡',   price: 38  },
+            { key: 'malatang',name: '麻辣烫', price: 28  },
+            { key: 'rice',    name: '炒饭',   price: 18  },
+            { key: 'wonton',  name: '馄饨',   price: 16  },
+            { key: 'veggie',  name: '菜饭',   price: 12  },
+        ];
+
+        const qtys = {};
+        menuList.forEach(m => { qtys[m.key] = 0; });
+
+        let savedTotal = 0;
+        let savedItems = [];
+
+        function syncQty(key) {
+            document.getElementById('qty-' + key).textContent = qtys[key];
+            const inner = document.getElementById('qty-' + key + '-inner');
+            if (inner) inner.textContent = qtys[key];
+        }
+
+        function changeQty(key, delta) {
+            qtys[key] = Math.max(0, qtys[key] + delta);
+            syncQty(key);
+        }
+
+        document.querySelectorAll('.option-group').forEach(group => {
+            group.addEventListener('click', (e) => {
+                if (e.target.classList.contains('option-tag')) {
+                    group.querySelectorAll('.option-tag').forEach(t => t.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                }
+            });
+        });
+
+        function getSelected(groupId) {
+            const el = document.querySelector(`#${groupId} .option-tag.selected`);
+            return el ? el.dataset.val : '';
+        }
+
+        function getSpice(cardEl) {
+            const sel = cardEl.querySelector('.spice-group .option-tag.selected');
+            return sel ? sel.dataset.val : '';
+        }
+
+        function submitOrder() {
+            let hasItem = false;
+            Object.values(qtys).forEach(q => { if (q > 0) hasItem = true; });
+            if (document.getElementById('wishInput').value.trim()) hasItem = true;
+            if (!hasItem) { alert('请至少选择一份菜品或填写希望菜品'); return; }
+
+            let total = 0;
+            savedItems = [];
+            menuList.forEach(m => {
+                if (qtys[m.key] > 0) {
+                    const sub = m.price * qtys[m.key];
+                    total += sub;
+                    savedItems.push({ key: m.key, name: m.name, qty: qtys[m.key], price: m.price, sub });
+                }
+            });
+
+            savedTotal = total;
+            document.getElementById('luckyOriginal').textContent = total;
+            document.getElementById('luckyOverlay').classList.add('show');
+        }
+
+        function closeLucky() { document.getElementById('luckyOverlay').classList.remove('show'); }
+
+        function confirmLucky() {
+            document.getElementById('luckyOverlay').classList.remove('show');
+            document.getElementById('errorOverlay').classList.add('show');
+        }
+
+        function closeError() { document.getElementById('errorOverlay').classList.remove('show'); }
+        function showSolution() { document.getElementById('solutionOverlay').classList.add('show'); }
+
+        function closeSolution() {
+            document.getElementById('solutionOverlay').classList.remove('show');
+            document.getElementById('errorOverlay').classList.remove('show');
+        }
+
+        function copyOrder() {
+            const lines = [];
+            savedItems.forEach(item => {
+                lines.push(`${item.name}（随机） ×${item.qty} = ¥${item.sub}`);
+            });
+
+            if (qtys.tea > 0) {
+                lines.push(`  冰度:${getSelected('iceOptions')}  甜度:${getSelected('sugarOptions')}`);
+            }
+
+            document.querySelectorAll('.menu-card').forEach(card => {
+                const title = card.querySelector('.card-title').textContent.replace('（随机）','');
+                const spice = getSpice(card);
+                if (spice && qtys[menuList.find(m => m.name === title)?.key] > 0) {
+                    lines.push(`  ${title} 辣度:${spice}`);
+                }
+            });
+
+            const wish = document.getElementById('wishInput').value.trim();
+            if (wish) lines.push(`希望菜品与备注: ${wish}`);
+            lines.push(`原价: ¥${savedTotal}`);
+            lines.push(`优惠后: ¥0.1`);
+
+            const text = '生日订单\n' + lines.join('\n');
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制！发给终于先生并付款 0.1 元~');
+            }).catch(() => {
+                alert(text + '\n\n请手动复制发给终于先生~');
+            });
+        }
+    </script>
+</body>
+</html>
