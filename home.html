@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday </title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Georgia','Times New Roman','PingFang SC','Microsoft YaHei',serif;
+            min-height: 100vh; color: #fff; overflow-x: hidden;
+        }
+        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+        .video-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.45) 100%); z-index: -1; }
+
+        /* 页面过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fdf8f5; z-index: 99999;
+            animation: pageIn 0.5s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        .page-transition.out {
+            animation: pageOut 0.4s cubic-bezier(0.23,1,0.32,1) forwards;
+        }
+        @keyframes pageIn { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes pageOut { 0% { opacity: 0; } 100% { opacity: 1; } }
+        .container { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 30px 24px; }
+        .glass-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 90%; max-width: 700px;
+            padding: 14px 16px 14px 20px;
+            background: rgba(255,255,255,0.07);
+            backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+            border: 1px solid rgba(255,255,255,0.16); border-radius: 50px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+            position: absolute; top: 32px; left: 50%; transform: translateX(-50%); z-index: 10;
+        }
+        .nav-logo { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .nav-logo .frog { font-size: 28px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); animation: hop 2s ease-in-out infinite; cursor: default; }
+        @keyframes hop { 0%,100%{transform:translateY(0);} 30%{transform:translateY(-6px);} 50%{transform:translateY(0);} 70%{transform:translateY(-3px);} }
+        .nav-logo .logo-text { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-family: 'PingFang SC','Microsoft YaHei',sans-serif; }
+        .nav-center { display: flex; align-items: center; gap: 8px; flex-shrink: 1; }
+        .nav-item {
+            padding: 9px 18px; border-radius: 25px;
+            color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 500;
+            letter-spacing: 1.5px; cursor: pointer; transition: all 0.35s ease;
+            text-decoration: none; font-family: 'PingFang SC','Microsoft YaHei',sans-serif;
+            white-space: nowrap; background: transparent; position: relative;
+        }
+        .nav-item::after {
+            content: '';
+            position: absolute;
+            bottom: 4px; left: 50%;
+            transform: translateX(-50%) scaleX(0);
+            width: 18px; height: 2px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 1px;
+            transition: transform 0.35s cubic-bezier(0.23,1,0.32,1);
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+        .nav-item:hover::after { transform: translateX(-50%) scaleX(1); }
+        .nav-item:active { transform: scale(0.93); background: rgba(255,255,255,0.22); }
+        .nav-right { flex-shrink: 0; }
+        .happy-text {
+            font-size: 14px; font-weight: 500; letter-spacing: 1px;
+            color: rgba(255,255,200,0.75); font-family: 'Georgia','Times New Roman',serif;
+            font-style: italic; cursor: default; white-space: nowrap;
+            animation: glow 2.5s ease-in-out infinite;
+        }
+        @keyframes glow { 0%,100%{color:rgba(255,255,200,0.65);} 50%{color:rgba(255,255,200,0.95);} }
+        .center-content { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
+        .sparkle {
+            position: absolute; width: 4px; height: 4px;
+            background: #ffd700; border-radius: 50%;
+            animation: sparkleFloat 3s ease-in-out infinite;
+            box-shadow: 0 0 6px 2px rgba(255,215,0,0.4);
+            pointer-events: none; z-index: 0;
+        }
+        @keyframes sparkleFloat {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0; }
+            20% { opacity: 1; }
+            50% { transform: translateY(-18px) scale(1.6); opacity: 0.8; }
+            80% { opacity: 0; }
+        }
+        .main-title {
+            font-size: 88px; font-weight: 400; letter-spacing: 12px;
+            font-family: 'Georgia','Times New Roman',serif;
+            background: linear-gradient(180deg,
+                #ffffff 0%, #fef5e7 15%, #f5d89a 30%,
+                #e8c56d 45%, #d4a860 55%, #c49a3c 70%,
+                #b8862d 85%, #9a6b1a 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; line-height: 1.15; margin-bottom: 12px;
+            filter: drop-shadow(0 2px 8px rgba(180,130,60,0.3)) drop-shadow(0 8px 24px rgba(0,0,0,0.2));
+            animation: titleFloat 4s ease-in-out infinite;
+        }
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .birthday-name {
+            font-size: 18px; letter-spacing: 4px;
+            color: rgba(255,255,255,0.7);
+            font-family: 'PingFang SC','Microsoft YaHei',sans-serif;
+            margin-bottom: 18px;
+            animation: fadeSlideIn 1.2s 0.5s cubic-bezier(0.23,1,0.32,1) both;
+        }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .accent-line { width: 50px; height: 2px; background: rgba(255,255,255,0.45); border-radius: 2px; margin-bottom: 20px; }
+        .sub-text {
+            font-size: 14px; color: rgba(255,255,255,0.6); letter-spacing: 2.5px;
+            font-style: italic; font-family: 'Georgia','Times New Roman',serif;
+            line-height: 2; max-width: 520px; text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .logout-area { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); }
+        .logout-btn {
+            padding: 10px 36px;
+            background: rgba(255,255,255,0.08); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.18); border-radius: 30px;
+            color: rgba(255,255,255,0.55); font-size: 13px; letter-spacing: 3px;
+            cursor: pointer; transition: all 0.35s ease;
+            font-family: 'PingFang SC','Microsoft YaHei',sans-serif;
+        }
+        .logout-btn:hover {
+            background: rgba(220,80,80,0.15); border-color: rgba(255,120,120,0.5);
+            color: #ffaaaa; box-shadow: 0 4px 18px rgba(255,80,80,0.2);
+        }
+        .music-fab {
+            position: fixed; bottom: 30px; left: 30px;
+            width: 50px; height: 50px;
+            background: rgba(255,255,255,0.08); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.18); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; cursor: pointer; z-index: 100;
+            transition: all 0.35s ease; color: #fff; text-decoration: none;
+        }
+        .music-fab:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.4); transform: scale(1.1); box-shadow: 0 8px 28px rgba(0,0,0,0.3); }
+        @media (max-width:768px){
+            .glass-nav{width:95%;padding:10px 12px 10px 14px;border-radius:40px;top:18px;}
+            .nav-item{padding:7px 10px;font-size:11px;letter-spacing:1px;}
+            .nav-logo .frog{font-size:22px;}.nav-logo .logo-text{font-size:10px;}.happy-text{font-size:11px;}
+            .main-title{font-size:48px;letter-spacing:6px;}.sub-text{font-size:12px;letter-spacing:1.5px;max-width:320px;}
+        }
+        @media (max-width:420px){
+            .glass-nav{padding:8px 8px;border-radius:35px;gap:0;}
+            .nav-item{padding:6px 7px;font-size:10px;letter-spacing:0.5px;}
+            .nav-logo .frog{font-size:18px;}.nav-logo .logo-text{display:none;}.happy-text{font-size:10px;}
+            .main-title{font-size:36px;letter-spacing:4px;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-transition"></div>
+
+    <video class="video-bg" autoplay muted loop playsinline>
+        <source src="2.mp4" type="video/mp4">
+    </video>
+    <div class="video-overlay"></div>
+
+    <div class="container">
+        <nav class="glass-nav">
+            <div class="nav-logo"><span class="frog">🐸</span><span class="logo-text">king small two</span></div>
+            <div class="nav-center">
+                <div class="nav-item" onclick="goTo('takeout.html')">点餐</div>
+                <div class="nav-item" onclick="goTo('memory.html')">回忆</div>
+                <div class="nav-item" onclick="goTo('blessing.html')">祝福</div>
+                <div class="nav-item" onclick="goTo('interact.html')">交互</div>
+            </div>
+            <div class="nav-right"><span class="happy-text">happyyyyy</span></div>
+        </nav>
+
+        <div class="center-content">
+            <h1 class="main-title">Happy Birthday</h1>
+            <p class="birthday-name">致王小二 · 0713</p>
+            <div class="accent-line"></div>
+            <p class="sub-text">I have dipped the vessel of my heart<br>into this silent hour<br>it has filled with smile.</p>
+        </div>
+        <div class="logout-area"><button class="logout-btn" onclick="logout()">退出登录</button></div>
+    </div>
+
+    <a href="music.html" class="music-fab" title="音乐">♪</a>
+
+    <script>
+        function goTo(page){
+            document.querySelector('.page-transition').classList.add('out');
+            setTimeout(() => { window.location.href = page; }, 400);
+        }
+        function logout(){
+            if(confirm('确定要退出登录吗？')){
+                document.querySelector('.page-transition').classList.add('out');
+                setTimeout(() => { window.location.href = 'index.html'; }, 400);
+            }
+        }
+
+        // 生成微光粒子
+        (function(){
+            const container = document.querySelector('.center-content');
+            for(let i=0;i<12;i++){
+                const s = document.createElement('div');
+                s.className = 'sparkle';
+                s.style.left = (Math.random()*80+10)+'%';
+                s.style.top = (Math.random()*60+10)+'%';
+                s.style.animationDelay = (Math.random()*3)+'s';
+                s.style.animationDuration = (Math.random()*2+2.5)+'s';
+                container.appendChild(s);
+            }
+        })();
+    </script>
+    <iframe src="bgm.html" style="display:none;"></iframe>
+</body>
+</html>
