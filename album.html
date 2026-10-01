@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IVE · BANG BANG 专辑</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root {
+            --green: #1DB954;
+            --green-dark: #17a84c;
+            --bg: #ffffff;
+            --fg: #161616;
+            --fg-2: #6b6b6b;
+            --fg-3: #9b9b9b;
+            --line: #eeeeee;
+            --hover: #f6f6f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+                'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+                'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* 背景氛围：封面模糊光晕 */
+        .bg-ambient {
+            position: fixed; top: 0; left: 0; width: 100%; height: 380px;
+            background: url('zj.jpg') center 28% / cover no-repeat;
+            filter: blur(56px) saturate(1.35) brightness(1.06);
+            -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 35%, transparent 100%);
+            mask-image: linear-gradient(180deg, #000 0%, #000 35%, transparent 100%);
+            opacity: 0.34;
+            z-index: 0; pointer-events: none;
+        }
+
+        /* 入场过渡 */
+        .page-transition {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; z-index: 99999;
+            animation: pageIn 0.45s cubic-bezier(0.23,1,0.32,1) forwards;
+            pointer-events: none;
+        }
+        @keyframes pageIn { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* ═══ 顶部栏 ═══ */
+        .topbar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 56px;
+            display: grid; grid-template-columns: 1fr auto 1fr;
+            align-items: center; gap: 16px;
+            padding: 0 14px 0 22px;
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(16px) saturate(1.4);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 10px; justify-self: start; }
+        .nav-arrow {
+            width: 34px; height: 34px; border-radius: 50%;
+            border: none; background: rgba(0,0,0,0.04);
+            color: var(--fg); font-size: 20px; line-height: 1;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s, color 0.2s, transform 0.2s;
+        }
+        .nav-arrow:hover { background: rgba(0,0,0,0.09); transform: translateY(-1px); }
+        .nav-arrow.disabled { color: #cfcfcf; background: transparent; cursor: default; }
+        .nav-arrow.disabled:hover { background: transparent; transform: none; }
+
+        /* 搜索框 */
+        .search-box {
+            justify-self: center;
+            width: 340px; max-width: 46vw; height: 36px;
+            display: flex; align-items: center; gap: 8px;
+            padding: 0 14px;
+            background: #f1f1f1; border: 1px solid transparent;
+            border-radius: 18px;
+            transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .search-box:focus-within {
+            background: #fff; border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(29,185,84,0.12);
+        }
+        .search-box svg { color: #a0a0a0; flex-shrink: 0; }
+        .search-box input {
+            flex: 1; border: none; background: transparent; outline: none;
+            font-size: 13px; color: var(--fg); min-width: 0;
+        }
+        .search-box input::placeholder { color: #a6a6a6; }
+
+        /* 窗口控制按钮 */
+        .win-controls { display: flex; align-items: center; gap: 2px; justify-self: end; }
+        .win-btn {
+            width: 34px; height: 34px; border: none; background: transparent;
+            border-radius: 8px; color: var(--fg-2); font-size: 15px; line-height: 1;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .win-btn:hover { background: #efefef; color: var(--fg); }
+        .win-btn.win-close:hover { background: #e81123; color: #fff; }
+
+        /* ═══ 内容区 ═══ */
+        .page {
+            position: relative; z-index: 1;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 92px 32px 132px;
+        }
+
+        .album-header {
+            display: flex; gap: 30px; align-items: flex-end;
+            animation: rise 0.7s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        .cover {
+            width: 200px; height: 200px; border-radius: 12px;
+            object-fit: cover; flex-shrink: 0;
+            box-shadow: 0 12px 34px rgba(0,0,0,0.18);
+            transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), box-shadow 0.5s;
+        }
+        .cover:hover { transform: scale(1.025) rotate(-1.2deg); box-shadow: 0 20px 46px rgba(0,0,0,0.24); }
+        .album-info { padding-bottom: 8px; }
+        .album-type {
+            display: inline-flex; align-items: center; gap: 7px;
+            font-size: 11px; letter-spacing: 3px; color: var(--fg-2);
+            text-transform: uppercase; margin-bottom: 8px; font-weight: 600;
+        }
+        .album-type::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+        .artist { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+        .artist-sub { font-weight: 500; color: var(--fg-2); font-size: 0.72em; letter-spacing: 0; }
+        .date { font-size: 13px; color: var(--fg-2); margin-top: 10px; letter-spacing: 0.5px; }
+        .actions { display: flex; align-items: center; gap: 10px; margin-top: 24px; }
+
+        .btn {
+            height: 38px; padding: 0 18px; border-radius: 20px;
+            border: 1px solid #e2e2e2; background: #fff;
+            font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+            color: var(--fg); cursor: pointer;
+            display: inline-flex; align-items: center; gap: 7px;
+            transition: all 0.18s ease;
+        }
+        .btn:hover { background: var(--hover); border-color: #d5d5d5; }
+        .btn-play {
+            background: linear-gradient(135deg, #21d966, #17a84c);
+            border-color: transparent; color: #fff;
+            box-shadow: 0 6px 18px rgba(29,185,84,0.30);
+        }
+        .btn-play:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(29,185,84,0.40); background: linear-gradient(135deg, #22de6a, #149e48); }
+        .btn-fav.liked { color: var(--green); border-color: var(--green); }
+        .btn-more { width: 38px; padding: 0; justify-content: center; font-size: 20px; }
+
+        /* 标签栏 */
+        .tabs {
+            display: flex; gap: 30px;
+            margin-top: 38px;
+            border-bottom: 1px solid var(--line);
+            animation: rise 0.7s cubic-bezier(0.22,1,0.36,1) 0.08s both;
+        }
+        .tab {
+            position: relative;
+            background: none; border: none; cursor: pointer;
+            font-size: 15px; font-weight: 600; color: var(--fg-2);
+            padding: 12px 2px 15px; letter-spacing: 0.5px;
+            transition: color 0.2s;
+        }
+        .tab:hover { color: var(--fg); }
+        .tab.active { color: var(--fg); }
+        .tab.active::after {
+            content: ''; position: absolute; left: 50%; bottom: -1px;
+            width: 100%; height: 3px; background: var(--green); border-radius: 3px;
+            transform: translateX(-50%);
+            animation: tabIn 0.35s cubic-bezier(0.22,1,0.36,1);
+        }
+        @keyframes tabIn { from { transform: translateX(-50%) scaleX(0.3); opacity: 0; } to { transform: translateX(-50%) scaleX(1); opacity: 1; } }
+
+        /* 表格 */
+        .panel { margin-top: 6px; animation: rise 0.7s cubic-bezier(0.22,1,0.36,1) 0.16s both; }
+        .thead, .track-row {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 90px;
+            align-items: center;
+            gap: 16px;
+        }
+        .thead {
+            padding: 14px 10px 11px;
+            font-size: 12px; color: var(--fg-3); letter-spacing: 1.5px;
+            border-bottom: 1px solid var(--line);
+        }
+        .th-dur { text-align: right; }
+        .track-row {
+            padding: 11px 10px;
+            border-radius: 10px;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .track-row:hover { background: var(--hover); }
+        .track-row.playing-row { background: rgba(29,185,84,0.05); }
+        .track-row.playing-row:hover { background: rgba(29,185,84,0.09); }
+        .td-name { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .heart {
+            width: 26px; height: 26px; flex-shrink: 0;
+            border: none; background: none; cursor: pointer;
+            color: #c8c8c8; font-size: 17px; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: color 0.15s, transform 0.15s;
+        }
+        .heart:hover { color: var(--fg-3); transform: scale(1.15); }
+        .heart.liked { color: var(--green); animation: pop 0.32s ease; }
+        @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
+        .no { width: 22px; flex-shrink: 0; font-size: 13px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+        .row-play {
+            width: 22px; height: 22px; flex-shrink: 0;
+            border: none; border-radius: 50%;
+            background: var(--green); color: #fff;
+            font-size: 10px; line-height: 1;
+            display: none; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 6px rgba(29,185,84,0.35);
+            animation: pop 0.2s ease;
+        }
+        .track-row:hover .no { display: none; }
+        .track-row:hover .row-play { display: inline-flex; }
+        .name { font-size: 15px; font-weight: 500; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .name.playing { color: var(--green); font-weight: 600; }
+        .td-artist { font-size: 13px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .td-dur { font-size: 13px; color: var(--fg-2); text-align: right; font-variant-numeric: tabular-nums; }
+
+        /* 播放中均衡器 */
+        .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; width: 22px; flex-shrink: 0; }
+        .eq span { width: 3px; background: var(--green); border-radius: 1px; animation: eq 0.9s ease-in-out infinite; }
+        .eq span:nth-child(1) { height: 7px; animation-delay: 0s; }
+        .eq span:nth-child(2) { height: 13px; animation-delay: 0.25s; }
+        .eq span:nth-child(3) { height: 9px; animation-delay: 0.5s; }
+        @keyframes eq { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+        .placeholder-panel { padding: 70px 0; text-align: center; color: var(--fg-3); font-size: 13px; letter-spacing: 2px; }
+
+        /* ═══ 底部播放器栏 ═══ */
+        .player-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 82px;
+            display: grid; grid-template-columns: 1fr auto 1fr;
+            align-items: center; gap: 20px; padding: 0 20px;
+            background: rgba(255,255,255,0.78);
+            backdrop-filter: blur(20px) saturate(1.5);
+            border-top: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 -6px 30px rgba(0,0,0,0.04);
+            z-index: 100;
+            animation: riseUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.22s both;
+        }
+        @keyframes riseUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+        .pb-left { display: flex; align-items: center; gap: 13px; min-width: 0; }
+        .pb-thumb {
+            width: 52px; height: 52px; border-radius: 8px; object-fit: cover;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+        }
+        .pb-meta { min-width: 0; }
+        .pb-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pb-artist { font-size: 12px; color: var(--fg-2); margin-top: 2px; }
+
+        /* 中间：控制 + 进度条 */
+        .pb-center { display: flex; align-items: center; gap: 16px; }
+        .pb-btn { border: none; background: none; cursor: pointer; font-size: 20px; color: var(--fg); transition: transform 0.12s, color 0.15s; }
+        .pb-btn:hover { transform: scale(1.15); }
+        .pb-btn.pb-play {
+            width: 42px; height: 42px; border-radius: 50%;
+            background: var(--fg); color: #fff; font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+            transition: transform 0.15s, background 0.15s;
+        }
+        .pb-btn.pb-play:hover { transform: scale(1.08); background: #000; }
+        .pb-time { font-size: 12px; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+        .pb-progress { position: relative; width: 180px; height: 5px; background: #e8e8e8; border-radius: 3px; overflow: hidden; }
+        .pb-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--green-dark)); border-radius: 3px; transition: width 0.3s; }
+
+        /* 右侧：心形 / 评论 / 更多 */
+        .pb-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+        .pb-icon {
+            width: 38px; height: 38px; border: none; background: none;
+            border-radius: 50%; color: var(--fg-2); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: color 0.15s, background 0.15s, transform 0.15s;
+        }
+        .pb-icon:hover { background: #f0f0f0; color: var(--fg); transform: translateY(-1px); }
+        .pb-icon svg { width: 20px; height: 20px; }
+        .pb-icon.liked { color: var(--green); }
+        .pb-icon.liked svg path { fill: currentColor; }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #dcdcdc; border-radius: 6px; border: 2px solid #fff; }
+        ::-webkit-scrollbar-thumb:hover { background: #c4c4c4; }
+
+        @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+        @media (max-width: 760px) {
+            .search-box { width: 200px; max-width: 40vw; }
+            .album-header { flex-direction: column; align-items: center; text-align: center; }
+            .cover { width: 172px; height: 172px; }
+            .actions { justify-content: center; flex-wrap: wrap; }
+            .thead, .track-row { grid-template-columns: 1.6fr 1fr 60px; gap: 10px; }
+            .td-artist, .th-artist { display: none; }
+            .player-bar { grid-template-columns: 1fr auto; gap: 12px; }
+            .pb-progress { display: none; }
+            .pb-right { gap: 2px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-ambient"></div>
+    <div class="page-transition"></div>
+
+    <!-- 顶部栏 -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="nav-arrow" id="backBtn" title="返回" aria-label="返回">←</button>
+            <button class="nav-arrow disabled" title="前进" aria-label="前进">→</button>
+        </div>
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input type="text" placeholder="搜索歌曲、歌手" aria-label="搜索">
+        </div>
+        <div class="win-controls">
+            <button class="win-btn" title="最小化">—</button>
+            <button class="win-btn" title="最大化">□</button>
+            <button class="win-btn win-close" title="关闭">✕</button>
+        </div>
+    </header>
+
+    <main class="page">
+        <!-- 专辑头部 -->
+        <section class="album-header">
+            <img class="cover" src="zj.jpg" alt="专辑封面">
+            <div class="album-info">
+                <div class="album-type">专辑</div>
+                <h1 class="artist">IVE <span class="artist-sub">(아이브)</span></h1>
+                <div class="date">发行日期 2026-02-23</div>
+                <div class="actions">
+                    <button class="btn btn-play">▶ 播放全部</button>
+                    <button class="btn btn-fav" id="favBtn">♡ 收藏</button>
+                    <button class="btn btn-more" title="更多">⋯</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 标签栏 -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="songs">歌曲 12</button>
+            <button class="tab" data-tab="info">专辑信息</button>
+            <button class="tab" data-tab="comments">评论</button>
+        </nav>
+
+        <!-- 歌曲列表 -->
+        <section class="panel" id="panel-songs">
+            <div class="thead">
+                <span class="th-name">歌曲名称</span>
+                <span class="th-artist">歌手</span>
+                <span class="th-dur">时长</span>
+            </div>
+            <div id="tracklist"></div>
+        </section>
+
+        <section class="panel placeholder-panel" id="panel-info" hidden>暂无专辑信息</section>
+        <section class="panel placeholder-panel" id="panel-comments" hidden>暂无评论</section>
+    </main>
+
+    <!-- 底部播放器栏 -->
+    <footer class="player-bar">
+        <div class="pb-left">
+            <img class="pb-thumb" src="bangbang.jpg" onerror="this.onerror=null;this.src='zj.jpg';" alt="">
+            <div class="pb-meta">
+                <div class="pb-title">BANG BANG</div>
+                <div class="pb-artist">IVE</div>
+            </div>
+        </div>
+        <div class="pb-center">
+            <button class="pb-btn">⏮</button>
+            <button class="pb-btn pb-play" id="playBtn">▶</button>
+            <button class="pb-btn">⏭</button>
+            <span class="pb-time">0:00</span>
+            <div class="pb-progress"><div class="pb-bar" id="pbBar"></div></div>
+            <span class="pb-time">2:58</span>
+        </div>
+        <div class="pb-right">
+            <button class="pb-icon" id="pbHeart" aria-label="喜欢" title="喜欢">
+                <svg viewBox="0 0 24 24"><path d="M12 20.5C7 17 2.5 13.4 2.5 9.2 2.5 6.3 4.8 4 7.6 4c1.7 0 3.3.8 4.4 2.2C13.1 4.8 14.7 4 16.4 4c2.8 0 5.1 2.3 5.1 5.2 0 4.2-4.5 7.8-9.5 11.3z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+            </button>
+            <button class="pb-icon" aria-label="评论" title="评论">
+                <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.2 0-2.3-.2-3.3-.7L4 20l.8-4A8.5 8.5 0 1 1 21 11.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="pb-icon" aria-label="更多" title="更多">
+                <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>
+            </button>
+        </div>
+    </footer>
+
+    <audio id="audioPlayer" preload="auto"></audio>
+
+    <script>
+        // 返回 / 前进
+        document.getElementById('backBtn').addEventListener('click', () => {
+            if (document.referrer && document.referrer.indexOf('album.html') === -1) {
+                history.back();
+            } else {
+                location.href = 'music.html';
+            }
+        });
+
+        // 曲目数据
+        const tracks = [
+            { n:'01', name:'BLACKHOLE', artist:'IVE', dur:'03:14' },
+            { n:'02', name:'BANG BANG', artist:'IVE', dur:'02:58', playing:true },
+            { n:'03', name:'숨바꼭질 (Hush)', artist:'IVE', dur:'02:47' },
+            { n:'04', name:'악성코드 (Stuck In Your Head)', artist:'IVE', dur:'02:47' },
+            { n:'05', name:'Fireworks', artist:'IVE', dur:'03:00' },
+            { n:'06', name:'HOT COFFEE', artist:'IVE', dur:'02:48' },
+            { n:'07', name:'8 (JANGWONYOUNG Solo)', artist:'张员瑛(WONYOUNG)', dur:'02:51' },
+            { n:'08', name:'Odd (GAEUL Solo)', artist:'秋天(GAEUL)', dur:'02:50' },
+            { n:'09', name:'Super ICY (LEESEO Solo)', artist:'李瑞(LEESEO)', dur:'02:50' },
+            { n:'10', name:'Unreal (LIZ Solo)', artist:'丽兹(LIZ)', dur:'02:42' },
+            { n:'11', name:'In Your Heart (REI Solo)', artist:'怜(Rei)', dur:'02:03' },
+            { n:'12', name:'Force (ANYUJIN Solo)', artist:'安俞真(YUJIN)', dur:'03:24' },
+        ];
+
+        const tracklist = document.getElementById('tracklist');
+        tracks.forEach((t, i) => {
+            const row = document.createElement('div');
+            row.className = 'track-row' + (t.playing ? ' playing-row' : '');
+            row.style.animation = `rise ${0.3 + i * 0.04}s cubic-bezier(0.22,1,0.36,1) both`;
+            const leadEl = t.playing
+                ? '<span class="eq"><span></span><span></span><span></span></span>'
+                : `<span class="no">${t.n}</span><button class="row-play" aria-label="播放">▶</button>`;
+            row.innerHTML = `
+                <div class="td-name">
+                    <button class="heart" aria-label="收藏">♡</button>
+                    ${leadEl}
+                    <span class="name${t.playing ? ' playing' : ''}">${t.name}</span>
+                </div>
+                <div class="td-artist">${t.artist}</div>
+                <div class="td-dur">${t.dur}</div>
+            `;
+            tracklist.appendChild(row);
+        });
+
+        // 心形收藏切换
+        document.addEventListener('click', (e) => {
+            const heart = e.target.closest('.heart');
+            if (heart) {
+                heart.classList.toggle('liked');
+                heart.textContent = heart.classList.contains('liked') ? '♥' : '♡';
+            }
+        });
+
+        // 头部「收藏」按钮切换
+        const favBtn = document.getElementById('favBtn');
+        favBtn.addEventListener('click', () => {
+            favBtn.classList.toggle('liked');
+            favBtn.innerHTML = favBtn.classList.contains('liked') ? '♥ 已收藏' : '♡ 收藏';
+        });
+
+        // 底部心形切换
+        document.getElementById('pbHeart').addEventListener('click', (e) => {
+            e.currentTarget.classList.toggle('liked');
+        });
+
+        // 标签切换
+        const tabs = document.querySelectorAll('.tab');
+        const panels = { songs:'panel-songs', info:'panel-info', comments:'panel-comments' };
+        tabs.forEach(t => t.addEventListener('click', () => {
+            tabs.forEach(x => x.classList.remove('active'));
+            t.classList.add('active');
+            Object.values(panels).forEach(id => document.getElementById(id).hidden = true);
+            document.getElementById(panels[t.dataset.tab]).hidden = false;
+        }));
+
+        // ═══ 音频播放：与 music 页共享 bangbang 播放进度 ═══
+        const PLAY_FILE = 'bangbang.mp3';
+        const audio = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const pbBar = document.getElementById('pbBar');
+        const pbProgress = document.querySelector('.pb-progress');
+        const timeEls = document.querySelectorAll('.pb-time');
+
+        function fmt(t) {
+            if (!isFinite(t) || t < 0) return '0:00';
+            const m = Math.floor(t / 60), s = Math.floor(t % 60);
+            return m + ':' + String(s).padStart(2, '0');
+        }
+        function updateProgress() {
+            const d = audio.duration, c = audio.currentTime;
+            if (isFinite(d) && d > 0) pbBar.style.width = (c / d * 100) + '%';
+            if (timeEls.length >= 2) {
+                timeEls[0].textContent = fmt(c);
+                if (isFinite(d) && d > 0) timeEls[1].textContent = fmt(d);
+            }
+        }
+        audio.addEventListener('timeupdate', updateProgress);
+        audio.addEventListener('loadedmetadata', updateProgress);
+        audio.addEventListener('play', () => playBtn.textContent = '⏸');
+        audio.addEventListener('pause', () => playBtn.textContent = '▶');
+
+        // 播放 / 暂停
+        playBtn.addEventListener('click', () => {
+            if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+        });
+
+        // 进度条点击跳转
+        pbProgress.addEventListener('click', (e) => {
+            if (!isFinite(audio.duration) || audio.duration <= 0) return;
+            const rect = pbProgress.getBoundingClientRect();
+            const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+            audio.currentTime = ratio * audio.duration;
+        });
+
+        // 恢复 music 页传入的进度与播放状态
+        audio.src = PLAY_FILE;
+        (function restore() {
+            const t = parseFloat(localStorage.getItem('resume_time') || '0');
+            const playing = localStorage.getItem('resume_playing') === '1';
+            audio.addEventListener('loadedmetadata', function once() {
+                if (isFinite(t) && t > 0 && t < audio.duration) audio.currentTime = t;
+                updateProgress();
+                if (playing) audio.play().catch(() => {});
+            }, { once: true });
+            audio.load();
+        })();
+
+        // 离开专辑页时把进度写回，供 music 页恢复
+        function saveResume() {
+            if (!audio.src) return;
+            localStorage.setItem('resume_file', PLAY_FILE);
+            localStorage.setItem('resume_time', String(audio.currentTime || 0));
+            localStorage.setItem('resume_playing', audio.paused ? '0' : '1');
+            localStorage.setItem('resume_name', 'BangBang');
+        }
+        window.addEventListener('pagehide', saveResume);
+        window.addEventListener('beforeunload', saveResume);
+    </script>
+</body>
+</html>
