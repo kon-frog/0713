@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGM </title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>">
+    <style>
+        body { margin: 0; padding: 0; background: transparent; }
+    </style>
+</head>
+<body>
+
+    <audio id="bgmAudio" style="display:none;"></audio>
+
+    <script>
+        const audio = document.getElementById('bgmAudio');
+        const songs = [
+            '1.mp3','2.mp3','3.mp3','4.mp3','5.mp3',
+            '6.mp3','7.mp3','8.mp3','9.mp3','10.mp3',
+            '11.mp3','12.mp3','13.mp3','14.mp3','15.mp3','16.mp3'
+        ];
+        let currentIndex = 0;
+
+        const savedIndex = parseInt(localStorage.getItem('bgm_index'));
+        const savedTime = parseFloat(localStorage.getItem('bgm_time_' + (savedIndex || 0))) || 0;
+        const savedVolume = parseFloat(localStorage.getItem('bgm_volume'));
+
+        if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex < songs.length) {
+            currentIndex = savedIndex;
+        }
+        audio.src = songs[currentIndex];
+        audio.currentTime = savedTime;
+        audio.volume = !isNaN(savedVolume) ? savedVolume : 0.3;
+
+        const wasPaused = localStorage.getItem('bgm_paused') === 'true';
+
+        // 尝试自动播放，被阻止则等用户点击
+        if (!wasPaused) {
+            audio.play().catch(() => {
+                document.addEventListener('click', () => {
+                    audio.play().catch(() => {});
+                }, { once: true });
+            });
+        }
+
+        // 定时保存进度
+        setInterval(() => {
+            if (!audio.paused) {
+                localStorage.setItem('bgm_index', currentIndex);
+                localStorage.setItem('bgm_time_' + currentIndex, audio.currentTime);
+                localStorage.setItem('bgm_volume', audio.volume);
+            }
+        }, 2000);
+
+        // 页面卸载前立即保存状态，防止跨页面中断
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('bgm_index', currentIndex);
+            localStorage.setItem('bgm_time_' + currentIndex, audio.currentTime);
+            localStorage.setItem('bgm_volume', audio.volume);
+            localStorage.setItem('bgm_paused', audio.paused);
+        });
+
+        // 播放结束自动切下一首
+        audio.addEventListener('ended', () => {
+            currentIndex = (currentIndex + 1) % songs.length;
+            audio.src = songs[currentIndex];
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+            localStorage.setItem('bgm_index', currentIndex);
+            localStorage.setItem('bgm_time_' + currentIndex, 0);
+        });
+
+        // 监听来自 music.html 的消息
+        window.addEventListener('message', (e) => {
+            const data = e.data;
+            if (data.action === 'play') { audio.play().catch(() => {}); }
+            if (data.action === 'pause') { audio.pause(); }
+            if (data.action === 'setSong') {
+                currentIndex = data.index;
+                audio.src = songs[currentIndex];
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+                localStorage.setItem('bgm_index', currentIndex);
+                localStorage.setItem('bgm_time_' + currentIndex, 0);
+            }
+            if (data.action === 'getStatus') {
+                e.source.postMessage({
+                    action: 'statusResponse',
+                    index: currentIndex,
+                    currentTime: audio.currentTime,
+                    volume: audio.volume,
+                    paused: audio.paused,
+                }, '*');
+            }
+            if (data.action === 'nextSong') {
+                currentIndex = (currentIndex + 1) % songs.length;
+                audio.src = songs[currentIndex];
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+            }
+            if (data.action === 'prevSong') {
+                currentIndex = (currentIndex - 1 + songs.length) % songs.length;
+                audio.src = songs[currentIndex];
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+            }
+        });
+    </script>
+
+</body>
+</html>
